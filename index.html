@@ -371,12 +371,12 @@
       .library img{filter:drop-shadow(0 12px 12px rgba(0,0,0,.35))}
       .temple{left:740px;top:300px;width:240px}
       .temple img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
-      .bonfire{position:absolute;left:448px;top:96px;width:384px;z-index:7;background:none;border:none;cursor:pointer;padding:0}
+      .bonfire{position:absolute;left:448px;top:96px;z-index:7;background:none;border:none;cursor:pointer;padding:0}
       .bonfire img{display:block;width:100%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
       .benches{position:absolute;left:401px;top:470px;width:350px;z-index:6;pointer-events:none;image-rendering:pixelated;opacity:.95}
-      .npc.wispO{left:400px;top:440px;width:48px;transform:translate(-50%,-92%)}
-      .npc.wispB{left:576px;top:418px;width:48px;transform:translate(-50%,-92%)}
-      .npc.wispG{left:752px;top:440px;width:48px;transform:translate(-50%,-92%)}
+      .npc.wispO{left:400px;top:440px;transform:translate(-50%,-92%)}
+      .npc.wispB{left:576px;top:418px;transform:translate(-50%,-92%)}
+      .npc.wispG{left:752px;top:440px;transform:translate(-50%,-92%)}
       .spark-badge{
         position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
         width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
@@ -531,19 +531,19 @@
                 <div class="mist" style="left:930px;top:80px;width:150px"></div>
 
                 <button type="button" class="site bonfire" id="bonfireEl" aria-label="Talk to the Bonfire Chief">
-                  <img src="assets/bonfire-chief-256.png" alt="The Bonfire Chief — a great stone-ringed bonfire with a warm fatherly flame face, chief of the will-o'-wisps" />
+                  <img src="assets/bonfire-chief-384.png" alt="The Bonfire Chief — a great stone-ringed bonfire with a warm fatherly flame face, chief of the will-o'-wisps" />
                 </button>
                 <img class="benches" src="assets/bench-social-v2.png" alt="" aria-hidden="true" />
                 <button type="button" class="npc wispO" id="wispOrangeEl" aria-label="Talk to the orange wisp">
-                  <img src="assets/wisp-orange.png" alt="" />
+                  <img src="assets/wisp-orange-48.png" alt="" />
                   <span class="wlabel pixel">EMBER</span>
                 </button>
                 <button type="button" class="npc wispB" id="wispBlueEl" aria-label="Talk to the blue wisp">
-                  <img src="assets/wisp-blue.png" alt="" />
+                  <img src="assets/wisp-blue-48.png" alt="" />
                   <span class="wlabel pixel">MIST</span>
                 </button>
                 <button type="button" class="npc wispG" id="wispGreenEl" aria-label="Talk to the green wisp">
-                  <img src="assets/wisp-green.png" alt="" />
+                  <img src="assets/wisp-green-48.png" alt="" />
                   <span class="wlabel pixel">MOSS</span>
                 </button>
               </div>
@@ -1142,7 +1142,7 @@
         var WHO_BEE = { name: "BEE · DESIGNER", img: "assets/bee-designer-96.png", npc: true };
         var WHO_TEMPLE = { name: "THE OLD SHRINE", img: "assets/temple-shop-192.png", npc: true };
         var WHO_SLOTH = { name: "SLOTH · LIBRARIAN", img: "assets/sloth-librarian-96.png", npc: true };
-        var WHO_CHIEF = { name: "BONFIRE CHIEF", img: "assets/bonfire-chief-256.png", npc: true };
+        var WHO_CHIEF = { name: "BONFIRE CHIEF", img: "assets/bonfire-chief-384.png", npc: true };
         var dialogueName = document.getElementById("dialogueName");
         var dialogueAvatar = document.getElementById("dialogueAvatar");
         var dialogueAvatarImg = document.getElementById("dialogueAvatarImg");
