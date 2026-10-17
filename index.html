@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-17.6";
+      window.GROVE_BUILD = "2026-10-17.7";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -190,6 +190,7 @@
       }
       .world.shop-world{width:1152px;height:864px}
       .world.decks-world{width:1152px;height:864px}
+      .world.social-world{width:1152px;height:864px}
       canvas.groundcv{
         position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;
         image-rendering:pixelated;background:#1e3d2a;
@@ -370,6 +371,12 @@
       .library img{filter:drop-shadow(0 12px 12px rgba(0,0,0,.35))}
       .temple{left:740px;top:300px;width:240px}
       .temple img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
+      .bonfire{position:absolute;left:448px;top:96px;width:256px;z-index:7;background:none;border:none;cursor:pointer;padding:0}
+      .bonfire img{display:block;width:100%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
+      .benches{position:absolute;left:401px;top:470px;width:350px;z-index:6;pointer-events:none;image-rendering:pixelated;opacity:.95}
+      .npc.wispO{left:400px;top:440px;width:84px;transform:translate(-50%,-92%)}
+      .npc.wispB{left:576px;top:418px;width:84px;transform:translate(-50%,-92%)}
+      .npc.wispG{left:752px;top:440px;width:84px;transform:translate(-50%,-92%)}
       .spark-badge{
         position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
         width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
@@ -517,6 +524,29 @@
                   <span class="wlabel pixel">SLOTH</span>
                 </button>
               </div>
+              <div class="world social-world" id="socialWorld" style="display:none">
+                <canvas class="groundcv" id="groundSocial" width="1152" height="864" aria-hidden="true"></canvas>
+                <div id="decorSocial"></div>
+                <div class="mist" style="left:90px;top:700px"></div>
+                <div class="mist" style="left:930px;top:80px;width:150px"></div>
+
+                <button type="button" class="site bonfire" id="bonfireEl" aria-label="Talk to the Bonfire Chief">
+                  <img src="assets/bonfire-chief-256.png" alt="The Bonfire Chief — a great stone-ringed bonfire with a warm fatherly flame face, chief of the will-o'-wisps" />
+                </button>
+                <img class="benches" src="assets/benches-social-v1.png" alt="" aria-hidden="true" />
+                <button type="button" class="npc wispO" id="wispOrangeEl" aria-label="Talk to the orange wisp">
+                  <img src="assets/wisp-orange.png" alt="" />
+                  <span class="wlabel pixel">EMBER</span>
+                </button>
+                <button type="button" class="npc wispB" id="wispBlueEl" aria-label="Talk to the blue wisp">
+                  <img src="assets/wisp-blue.png" alt="" />
+                  <span class="wlabel pixel">MIST</span>
+                </button>
+                <button type="button" class="npc wispG" id="wispGreenEl" aria-label="Talk to the green wisp">
+                  <img src="assets/wisp-green.png" alt="" />
+                  <span class="wlabel pixel">MOSS</span>
+                </button>
+              </div>
               <div class="fadeveil" id="fadeVeil" aria-hidden="true"></div>
               <div class="zoomctl" role="group" aria-label="Camera zoom">
                 <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
@@ -605,9 +635,24 @@
         var DECKS_DOOR = { x: 576, y: 430 };   // walk-to point in front of the library door
         var LIBBUILD = { x0: 348, x1: 804, y0: 190, y1: 392 }; // library footprint blocker
         var SLOTH = { x: 700, y: 430 };        // the librarian, standing by the door
-        var room = "lobby"; // "lobby" | "shop" | "decks" — which screen she is on
+        // The SOCIAL screen: S-bend trail to the bonfire chief — walk up the
+        // Social trail past its waystone to fade in; walk off its bottom edge
+        // to fade back to the lobby at the waystone. The bonfire chief + his
+        // three wisp attendants live in the clearing at the top.
+        var SOCIAL_COLS = 24, SOCIAL_ROWS = 18;
+        var SOCIAL_W = SOCIAL_COLS * TILE, SOCIAL_H = SOCIAL_ROWS * TILE; // 1152 x 864
+        var SOCIAL_ENTRY = { x: 576, y: 754 }; // just inside the social screen's bottom edge
+        var SOCIAL_DOOR = { x: 576, y: 430 };  // walk-to point in front of the bonfire
+        var BONFIRE = { x: 576, y: 280, x0: 470, x1: 682, y0: 190, y1: 360 }; // bonfire footprint blocker
+        var WISPS = [
+          { id: "wispO", x: 400, y: 440 },
+          { id: "wispB", x: 576, y: 418 },
+          { id: "wispG", x: 752, y: 440 }
+        ];
+        var room = "lobby"; // "lobby" | "shop" | "decks" | "social" — which screen she is on
         var pendingDoor = false;     // panel sent her up the trail: after the fade, keep walking to the woodshop door
         var pendingLibrary = false;  // panel sent her up the Decks trail: after the fade, keep walking to the library door
+        var pendingBonfire = false;  // panel sent her up the Social trail: after the fade, keep walking to the bonfire
         var pendingLobbyWalk = null; // panel picked another trail from a side screen: after fading back, walk to that waystone
         var slothMet = false; // the librarian's first-talk line is spent
         var gateMute = null; // trail id whose lobby gate stays shut during a panel-sent walk back out of its room
@@ -650,6 +695,8 @@
         var shopTrailRef = null;
         var decksTrailRef = null;
         TRAILS.forEach(function(t){ if (t.id === "shop") shopTrailRef = t; if (t.id === "decks") decksTrailRef = t; });
+        var socialTrailRef = null;
+        TRAILS.forEach(function(t){ if (t.id === "social") socialTrailRef = t; });
 
         // winding path waypoints (tile coords), from the plaza to each waystone
         var PATHS = {
@@ -776,6 +823,17 @@
           if (Math.abs(i - 12) < 1.25 && j >= 13) return true; // dirt path off the bottom edge — the way back to the lobby
           return false;
         }
+        function socialDirtAt(i, j){ // corner-lattice point in social-room tile coords — S-bend path + bonfire clearing
+          var ex = (i - 12) / 7, ey = (j - 5.5) / 4.5;
+          if (ex*ex + ey*ey < 1) return true; // the bonfire clearing, dirt like the plaza
+          // S-bend: enter bottom-center, wind left, then right, up to the clearing
+          var SEGS = [[[12,17.5],[8.5,14]], [[8.5,14],[15.5,11]], [[15.5,11],[12,8]]];
+          for (var s = 0; s < SEGS.length; s++){
+            if (segDist(i, j, SEGS[s][0][0], SEGS[s][0][1], SEGS[s][1][0], SEGS[s][1][1]) < 1.1) return true;
+          }
+          if (Math.abs(i - 12) < 1.25 && j >= 15) return true; // dirt path off the bottom edge — the way back to the lobby
+          return false;
+        }
         var tileMask = []; // lobby per-tile mask, reused for decor placement
         function paintGround(cv, cols, rows, dirtFn, darkFn, salt){
           var g = cv.getContext("2d");
@@ -835,6 +893,8 @@
           scatterInto(document.getElementById("decorShop"), shopMask, SHOP_COLS, SHOP_ROWS, 26, 10, 4);
           var decksMask = paintGround(document.getElementById("groundDecks"), DECKS_COLS, DECKS_ROWS, decksDirtAt, null, 202);
           scatterInto(document.getElementById("decorDecks"), decksMask, DECKS_COLS, DECKS_ROWS, 26, 10, 4);
+          var socialMask = paintGround(document.getElementById("groundSocial"), SOCIAL_COLS, SOCIAL_ROWS, socialDirtAt, null, 303);
+          scatterInto(document.getElementById("decorSocial"), socialMask, SOCIAL_COLS, SOCIAL_ROWS, 26, 10, 4);
         }
 
         // ---------- decor ----------
@@ -865,8 +925,9 @@
         var world = document.getElementById("world");
         var shopWorldEl = document.getElementById("shopWorld");
         var decksWorldEl = document.getElementById("decksWorld");
+        var socialWorldEl = document.getElementById("socialWorld");
         var fadeVeil = document.getElementById("fadeVeil");
-        function activeWorld(){ return room === "shop" ? shopWorldEl : room === "decks" ? decksWorldEl : world; }
+        function activeWorld(){ return room === "shop" ? shopWorldEl : room === "decks" ? decksWorldEl : room === "social" ? socialWorldEl : world; }
         var playerEl = document.getElementById("player");
         var playerCanvas = document.getElementById("playerCanvas");
         var promptEl = document.getElementById("prompt");
@@ -892,7 +953,7 @@
           pink:  { src: "assets/decor/decor-flowers-pink-v2.png", w: 130, h: 28 },
           blue:  { src: "assets/decor/decor-flowers-blue-v2.png", w: 70,  h: 60 }
         };
-        var gfSolids = { lobby: [], shop: [], decks: [] }; // { el, base, rect } per room, for collision + depth sort
+        var gfSolids = { lobby: [], shop: [], decks: [], social: [] }; // { el, base, rect } per room, for collision + depth sort
         function gfPlace(host, roomName, kind, x, y, solid){
           var d = GF_DECOR[kind];
           var im = document.createElement("img");
@@ -932,6 +993,14 @@
         gfPlace(decksWorldEl, "decks", "tree", 1020, 740, true);
         // gfPlace(decksWorldEl, "decks", "stump", 950, 500, true); // parked — see the lobby stump note
         [[160,680],[880,690],[400,800],[760,800]].forEach(function(p){ gfPlace(decksWorldEl, "decks", "blue", p[0], p[1], false); });
+        // social — S-bend: trees crowd the bends so the bonfire stays hidden until the last turn
+        gfPlace(socialWorldEl, "social", "tree", 130, 180, true);
+        gfPlace(socialWorldEl, "social", "tree", 1020, 180, true);
+        gfPlace(socialWorldEl, "social", "tree", 200, 560, true);
+        gfPlace(socialWorldEl, "social", "tree", 950, 560, true);
+        gfPlace(socialWorldEl, "social", "tree", 576, 120, true);
+        gfPlace(socialWorldEl, "social", "rocks", 850, 720, true);
+        [[300,320],[860,320],[420,660],[760,640],[150,700],[1000,700]].forEach(function(p){ gfPlace(socialWorldEl, "social", "pink", p[0], p[1], false); });
 
         var collected = {}; // trail id -> true (this session only)
         var selectedTrail = null;
@@ -990,6 +1059,7 @@
               if (room === "lobby") walkTo(t.sx, t.sy + 48);
               else if (t.id === "shop" && room === "shop") walkTo(SHOP_DOOR.x, SHOP_DOOR.y); // already through the trail — just head for the door
               else if (t.id === "decks" && room === "decks") walkTo(DECKS_DOOR.x, DECKS_DOOR.y); // already through the trail — just head for the door
+              else if (t.id === "social" && room === "social") walkTo(SOCIAL_DOOR.x, SOCIAL_DOOR.y); // already through the trail — just head for the fire
               else { pendingLobbyWalk = { x: t.sx, y: t.sy + 48 }; startTransition("lobby"); } // fade back out, then walk up that trail
               selectTrail(t.id, true);
             });
@@ -1019,19 +1089,27 @@
                   ? '<button class="btn" type="button" id="collectBtn">Walk to the woodshop</button><p class="fine" style="margin-top:8px">The Shop spark waits at the old shrine in the woodshop clearing, up the trail past the waystone — the bear and the bee can tell you more.</p>'
                   : t.id === "decks"
                   ? '<button class="btn" type="button" id="collectBtn">Walk to the library</button><p class="fine" style="margin-top:8px">The library stands in its own clearing, up the trail past the waystone — the sloth librarian keeps Grizzly&rsquo;s decks on its shelves.</p>'
+                  : t.id === "social"
+                  ? '<button class="btn" type="button" id="collectBtn">Walk to the bonfire</button><p class="fine" style="margin-top:8px">The bonfire chief waits in his clearing, up the S-bend trail past the waystone — the will-o&rsquo;-wisps keep his light, and no ghost bothers anyone in it.</p>'
                   : '<button class="btn" type="button" id="collectBtn">Walk this trail · gather the ' + t.name + ' spark ★</button>')) +
             '</div>';
           var cb = document.getElementById("collectBtn");
           if (cb) cb.addEventListener("click", function(){
             if (t.id === "shop") { // the shrine grants this spark, not the panel — the button walks her there
               if (room === "shop") walkTo(SHOP_DOOR.x, SHOP_DOOR.y);
-              else if (room === "decks") { pendingDoor = true; pendingLobbyWalk = { x: shopTrailRef.sx, y: shopTrailRef.sy + 48 }; startTransition("lobby"); }
+              else if (room === "decks" || room === "social") { pendingDoor = true; pendingLobbyWalk = { x: shopTrailRef.sx, y: shopTrailRef.sy + 48 }; startTransition("lobby"); }
               else { pendingDoor = true; walkTo(shopTrailRef.sx + 42, shopTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
             }
             else if (t.id === "decks") { // no spark here yet — the button just walks her to the library
               if (room === "decks") walkTo(DECKS_DOOR.x, DECKS_DOOR.y);
-              else if (room === "shop") { pendingLibrary = true; pendingLobbyWalk = { x: decksTrailRef.sx, y: decksTrailRef.sy + 48 }; startTransition("lobby"); }
+              else if (room === "shop" || room === "social") { pendingLibrary = true; pendingLobbyWalk = { x: decksTrailRef.sx, y: decksTrailRef.sy + 48 }; startTransition("lobby"); }
               else { pendingLibrary = true; walkTo(decksTrailRef.sx + 42, decksTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
+            }
+            else if (t.id === "social") { // no spark here yet — the button just walks her to the bonfire
+              if (room === "social") walkTo(SOCIAL_DOOR.x, SOCIAL_DOOR.y);
+              else if (room === "shop") { pendingBonfire = true; pendingLobbyWalk = { x: socialTrailRef.sx, y: socialTrailRef.sy + 48 }; startTransition("lobby"); }
+              else if (room === "decks") { pendingBonfire = true; pendingLobbyWalk = { x: socialTrailRef.sx, y: socialTrailRef.sy + 48 }; startTransition("lobby"); }
+              else { pendingBonfire = true; walkTo(socialTrailRef.sx + 42, socialTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
             }
             else collect(t);
           });
@@ -1063,6 +1141,7 @@
         var WHO_BEE = { name: "BEE · DESIGNER", img: "assets/bee-designer-96.png", npc: true };
         var WHO_TEMPLE = { name: "THE OLD SHRINE", img: "assets/temple-shop-192.png", npc: true };
         var WHO_SLOTH = { name: "SLOTH · LIBRARIAN", img: "assets/sloth-librarian-96.png", npc: true };
+        var WHO_CHIEF = { name: "BONFIRE CHIEF", img: "assets/bonfire-chief-256.png", npc: true };
         var dialogueName = document.getElementById("dialogueName");
         var dialogueAvatar = document.getElementById("dialogueAvatar");
         var dialogueAvatarImg = document.getElementById("dialogueAvatarImg");
@@ -1155,6 +1234,19 @@
             "Sloth — librarian of the Sylvan Library. Slow paws, perfect memory.", WHO_SLOTH);
           showDecksChoices();
         }
+        function talkChief(){
+          say("Welcome to the fire, traveler. The wisps watch over you here. Rest — no ghost bothers anyone in my light.",
+              "The Bonfire Chief — the eternal campfire, chief of the will-o'-wisps.", WHO_CHIEF);
+        }
+        function talkWisp(color){
+          var lines = {
+            orange: "Hihi! I'm Ember! The chief's light keeps the ghosts polite. Stay as long as you like!",
+            blue: "Hello! I'm Mist. The blue flame sees far — I watch the trail for travelers.",
+            green: "Hee! I'm Moss! The chief says you're the druid! Do you like my swirls?"
+          };
+          var names = { orange: "EMBER", blue: "MIST", green: "MOSS" };
+          say(lines[color] || lines.orange, "A will-o'-wisp attendant of the Bonfire Chief.", { name: names[color] || "WISP", img: "assets/wisp-" + color + ".png", npc: true });
+        }
         function visitTemple(){
           if (collected.shop) {
             say("The shrine is quiet. The gold spark is yours.", "The old shrine — its gold star now burns in your StarForce.", WHO_TEMPLE);
@@ -1174,9 +1266,17 @@
         var bearEl = document.getElementById("bearEl");
         var beeEl = document.getElementById("beeEl");
         var slothEl = document.getElementById("slothEl");
+        var chiefEl = document.getElementById("bonfireEl");
+        var wispOrangeEl = document.getElementById("wispOrangeEl");
+        var wispBlueEl = document.getElementById("wispBlueEl");
+        var wispGreenEl = document.getElementById("wispGreenEl");
         bearEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkBear(); });
         beeEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkBee(); });
         slothEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkSloth(); });
+        chiefEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkChief(); });
+        wispOrangeEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkWisp("orange"); });
+        wispBlueEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkWisp("blue"); });
+        wispGreenEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkWisp("green"); });
         document.getElementById("libraryEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(DECKS_DOOR.x, DECKS_DOOR.y); });
         document.getElementById("templeEl").addEventListener("click", function(ev){ ev.stopPropagation(); visitTemple(); });
         document.getElementById("woodshopEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(SHOP_DOOR.x, SHOP_DOOR.y); });
@@ -1188,8 +1288,14 @@
         var DECKS_SITES = [
           { id: "sloth", x: SLOTH.x, y: SLOTH.y, range: 112, label: "Talk to the sloth librarian", run: talkSloth }
         ];
+        var SOCIAL_SITES = [
+          { id: "chief", x: BONFIRE.x, y: BONFIRE.y, range: 140, label: "Talk to the Bonfire Chief", run: talkChief },
+          { id: "wispO", x: WISPS[0].x, y: WISPS[0].y, range: 100, label: "Talk to Ember", run: function(){ talkWisp("orange"); } },
+          { id: "wispB", x: WISPS[1].x, y: WISPS[1].y, range: 100, label: "Talk to Mist", run: function(){ talkWisp("blue"); } },
+          { id: "wispG", x: WISPS[2].x, y: WISPS[2].y, range: 100, label: "Talk to Moss", run: function(){ talkWisp("green"); } }
+        ];
         function nearestSite(){
-          var sites = room === "shop" ? SITES : room === "decks" ? DECKS_SITES : null; // each screen has its own folk
+          var sites = room === "shop" ? SITES : room === "decks" ? DECKS_SITES : room === "social" ? SOCIAL_SITES : null; // each screen has its own folk
           if (!sites) return { site: null, dist: 1e9 };
           var best = null, bestD = 1e9;
           sites.forEach(function(s){
@@ -1307,6 +1413,21 @@
             }
             return;
           }
+          if (room === "social") {
+            // bonfire footprint, and the wisps' own space
+            blockRect(BONFIRE);
+            gfSolids.social.forEach(function(s){ blockRect(s.rect); }); // Gentle Forest trees + rocks
+            SOCIAL_SITES.forEach(function(s){
+              if (s.id === "chief") return; // the bonfire's rect already covers it
+              var nx = pos.x - s.x, ny = pos.y - s.y;
+              var nd = Math.sqrt(nx*nx + ny*ny);
+              if (nd < 28 && nd > 0.01) {
+                pos.x = s.x + (nx / nd) * 28;
+                pos.y = s.y + (ny / nd) * 28;
+              }
+            });
+            return;
+          }
           // keep out of Linkwood's trunk
           var dx = pos.x - TRUNK.x, dy = pos.y - TRUNK.y;
           var dist = Math.sqrt(dx*dx + dy*dy);
@@ -1362,10 +1483,14 @@
               (pos.x > 710 && pos.x < 1010 && pos.y < TEMPLE.y1 - 24) ||
               SITES.some(function(s){ return Math.abs(pos.x - s.x) < 76 && pos.y < s.y - 12; });
             if (behindSite) pz = 6; // behind the woodshop, the shrine, or an NPC
-          } else {
+          } else if (room === "decks") {
             var behindLib = (pos.x > 290 && pos.x < 862 && pos.y < LIBBUILD.y1 - 24) ||
               (Math.abs(pos.x - SLOTH.x) < 76 && pos.y < SLOTH.y - 12);
             if (behindLib) pz = 6; // behind the library or the librarian
+          } else if (room === "social") {
+            var behindFire = (pos.x > 420 && pos.x < 732 && pos.y < BONFIRE.y1 - 24) ||
+              SOCIAL_SITES.some(function(s){ return Math.abs(pos.x - s.x) < 60 && pos.y < s.y - 12; });
+            if (behindFire) pz = 6; // behind the bonfire or a wisp
           }
           playerEl.style.zIndex = pz;
           // Gentle Forest solids depth-sort against her: a piece whose base
@@ -1382,6 +1507,10 @@
           bearEl.classList.toggle("near", !!(ns.site && ns.site.id === "bear"));
           beeEl.classList.toggle("near", !!(ns.site && ns.site.id === "bee"));
           slothEl.classList.toggle("near", !!(ns.site && ns.site.id === "sloth"));
+          chiefEl.classList.toggle("near", !!(ns.site && ns.site.id === "chief"));
+          wispOrangeEl.classList.toggle("near", !!(ns.site && ns.site.id === "wispO"));
+          wispBlueEl.classList.toggle("near", !!(ns.site && ns.site.id === "wispB"));
+          wispGreenEl.classList.toggle("near", !!(ns.site && ns.site.id === "wispG"));
           // (the shrine stays "described" until the spark is gathered or the grove resets — no walk-away disarm: temple clicks work from anywhere, like Linkwood's)
           var dt = treeDist();
           var promptText = null;
@@ -1453,6 +1582,7 @@
           world.style.display = dest === "lobby" ? "" : "none";
           shopWorldEl.style.display = dest === "shop" ? "block" : "none";
           decksWorldEl.style.display = dest === "decks" ? "block" : "none";
+          socialWorldEl.style.display = dest === "social" ? "block" : "none";
           var host = activeWorld();
           host.appendChild(playerEl); // she (and her prompt bubble) live on whichever screen is showing
           host.appendChild(promptEl);
@@ -1470,8 +1600,11 @@
           } else if (dest === "decks") {
             pos = { x: DECKS_ENTRY.x, y: DECKS_ENTRY.y };
             facing = "north"; // just walked in off the bottom edge
+          } else if (dest === "social") {
+            pos = { x: SOCIAL_ENTRY.x, y: SOCIAL_ENTRY.y };
+            facing = "north"; // just walked in off the bottom edge
           } else {
-            var homeStone = fromRoom === "decks" ? decksTrailRef : shopTrailRef;
+            var homeStone = fromRoom === "decks" ? decksTrailRef : fromRoom === "social" ? socialTrailRef : shopTrailRef;
             pos = { x: homeStone.sx, y: homeStone.sy + 96 }; // back in the lobby, at that trail's waystone
             facing = "north";
           }
@@ -1479,6 +1612,7 @@
           cam = null; // snap the camera to the new room
           if (dest === "shop" && pendingDoor) { pendingDoor = false; walkTo(SHOP_DOOR.x, SHOP_DOOR.y); }
           if (dest === "decks" && pendingLibrary) { pendingLibrary = false; walkTo(DECKS_DOOR.x, DECKS_DOOR.y); }
+          if (dest === "social" && pendingBonfire) { pendingBonfire = false; walkTo(SOCIAL_DOOR.x, SOCIAL_DOOR.y); }
           if (dest === "lobby" && pendingLobbyWalk) { var pw = pendingLobbyWalk; pendingLobbyWalk = null; walkTo(pw.x, pw.y); }
           renderPlayer();
         }
@@ -1523,9 +1657,15 @@
                 var ddx = pos.x - decksTrailRef.sx, ddy = pos.y - decksTrailRef.sy;
                 if (ddx * ddx + ddy * ddy < 62 * 62) startTransition("decks");
               }
+              if (gateMute !== "social") {
+                var sox = pos.x - socialTrailRef.sx, soy = pos.y - socialTrailRef.sy;
+                if (sox * sox + soy * soy < 62 * 62) startTransition("social");
+              }
             } else if (room === "shop" && pos.y > SHOP_H - 34) {
               startTransition("lobby");
             } else if (room === "decks" && pos.y > DECKS_H - 34) {
+              startTransition("lobby");
+            } else if (room === "social" && pos.y > SOCIAL_H - 34) {
               startTransition("lobby");
             }
           }
