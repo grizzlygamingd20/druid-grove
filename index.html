@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-17.5";
+      window.GROVE_BUILD = "2026-10-17.6";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -885,12 +885,12 @@
         // walkable flower patches. A solid's blocker is only its trunk/base
         // footprint (fw x fh at the base), never the full canopy.
         var GF_DECOR = {
-          tree:  { src: "assets/decor/decor-tree-canopy.png",  w: 225, h: 290, fw: 68,  fh: 30 },
+          tree:  { src: "assets/decor/decor-tree-canopy-v2.png",  w: 225, h: 290, fw: 68,  fh: 30 },
           stump: { src: "assets/decor/decor-stump.png",        w: 44,  h: 96,  fw: 40,  fh: 32 },
           log:   { src: "assets/decor/decor-log.png",          w: 110, h: 90,  fw: 100, fh: 34 },
-          rocks: { src: "assets/decor/decor-rocks.png",        w: 150, h: 70,  fw: 110, fh: 36 },
-          pink:  { src: "assets/decor/decor-flowers-pink.png", w: 130, h: 28 },
-          blue:  { src: "assets/decor/decor-flowers-blue.png", w: 70,  h: 60 }
+          rocks: { src: "assets/decor/decor-rocks-v2.png",        w: 150, h: 70,  fw: 110, fh: 36 },
+          pink:  { src: "assets/decor/decor-flowers-pink-v2.png", w: 130, h: 28 },
+          blue:  { src: "assets/decor/decor-flowers-blue-v2.png", w: 70,  h: 60 }
         };
         var gfSolids = { lobby: [], shop: [], decks: [] }; // { el, base, rect } per room, for collision + depth sort
         function gfPlace(host, roomName, kind, x, y, solid){
@@ -912,9 +912,13 @@
         gfPlace(world, "lobby", "rocks", 600, 150, true);
         gfPlace(world, "lobby", "rocks", 1600, 150, true);
         gfPlace(world, "lobby", "rocks", 1104, 1500, true);
-        gfPlace(world, "lobby", "stump", 950, 950, true);
-        gfPlace(world, "lobby", "stump", 1260, 950, true);
-        gfPlace(world, "lobby", "log", 1104, 1045, true);
+        // Stumps + log are parked: decor-stump.png and decor-log.png were
+        // mis-cropped from the pack (tree-base / slope fragments with grass
+        // baked in) and drew as dark boxes on the dirt. Re-crop them as clean
+        // cut-outs, ship as -v2 filenames, then restore these three lines.
+        // gfPlace(world, "lobby", "stump", 950, 950, true);
+        // gfPlace(world, "lobby", "stump", 1260, 950, true);
+        // gfPlace(world, "lobby", "log", 1104, 1045, true);
         // lobby flowers — grass beside the dirt trails, never on the dirt
         [[1180,1010],[1420,1010],[700,470],[430,580],[1520,385],[1830,270],[1560,880],[1245,1090]].forEach(function(p){ gfPlace(world, "lobby", "pink", p[0], p[1], false); });
         [[1010,960],[700,1120],[855,520],[1250,560],[1360,760],[430,1130]].forEach(function(p){ gfPlace(world, "lobby", "blue", p[0], p[1], false); });
@@ -926,7 +930,7 @@
         // decks clearing — two trees at the edges, a stump east of the library
         gfPlace(decksWorldEl, "decks", "tree", 130, 110, true);
         gfPlace(decksWorldEl, "decks", "tree", 1020, 740, true);
-        gfPlace(decksWorldEl, "decks", "stump", 950, 500, true);
+        // gfPlace(decksWorldEl, "decks", "stump", 950, 500, true); // parked — see the lobby stump note
         [[160,680],[880,690],[400,800],[760,800]].forEach(function(p){ gfPlace(decksWorldEl, "decks", "blue", p[0], p[1], false); });
 
         var collected = {}; // trail id -> true (this session only)
