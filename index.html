@@ -1,0 +1,1686 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // ---- build stamp & self-refresh -----------------------------------
+      // This page is usually opened inside an app webview, and webviews
+      // cache hard: a phone can keep serving a days-old copy of the grove
+      // long after a new build is published — force-stopping the app does
+      // not clear that cache, so "it's live" and "I can see it" kept
+      // disagreeing. The page now checks itself: on load it re-fetches its
+      // own document with HTTP caching disabled, reads the build stamp out
+      // of the fresh copy, and if that stamp is newer than the one running
+      // it reloads once from a cache-busted URL (the ?gv= marker both
+      // forces a fresh download and stops the reload from looping). If a
+      // newer build appears while the page sits open, a pill offers the
+      // same refresh instead of yanking the game away mid-walk. Asset
+      // URLs stay plain — no ?v= stamps: the host resolves assets by
+      // exact path, so a query string breaks them. Changed art ships
+      // under new versioned filenames instead (see av() in the main
+      // script).
+      // BUMP THE STAMP on every publish — it is the only signal old
+      // copies have that a newer grove exists.
+      window.GROVE_BUILD = "2026-10-17.5";
+      (function(){
+        var running = window.GROVE_BUILD;
+        var busy = false;
+        function gvParam(){
+          var m = /[?&]gv=([^&]+)/.exec(window.location.search || "");
+          return m ? decodeURIComponent(m[1]) : null;
+        }
+        function jumpTo(stamp){
+          window.location.replace(window.location.pathname + "?gv=" + encodeURIComponent(stamp));
+        }
+        function showUpdatePill(stamp){
+          if (!document.body || document.getElementById("groveUpdatePill")) return;
+          var b = document.createElement("button");
+          b.id = "groveUpdatePill"; b.type = "button";
+          b.textContent = "A new grove has grown — tap to refresh";
+          b.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;padding:12px 18px;border-radius:999px;border:2px solid #c9a227;background:#1e4620;color:#f4ead2;font:600 14px Karla,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer";
+          b.addEventListener("click", function(){ jumpTo(stamp); });
+          document.body.appendChild(b);
+        }
+        function check(auto){
+          if (busy || !window.fetch) return;
+          busy = true;
+          fetch(window.location.pathname, { cache: "no-store", credentials: "same-origin" })
+            .then(function(r){ return r.ok ? r.text() : null; })
+            .then(function(html){
+              busy = false;
+              if (!html) return;
+              var m = /GROVE_BUILD\s*=\s*"([^"]+)"/.exec(html);
+              if (!m || m[1] === running) return; // already current
+              if (gvParam() === m[1]) return;     // already jumped once — never loop
+              if (auto) jumpTo(m[1]); else showUpdatePill(m[1]);
+            })
+            .catch(function(){ busy = false; });
+        }
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ check(true); });
+        else check(true);
+        document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(false); });
+      })();
+    </script>
+    <link rel="icon" href="data:," />
+    <title>Druid Grove Lobby</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Karla:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        color-scheme: light dark;
+        --bg:#101a0e;
+        --bg2:#1a2b14;
+        --panel:#f4ead2;
+        --panel-2:#eadfc2;
+        --ink:#2b2114;
+        --ink-soft:#5c4c33;
+        --wood:#5a3d22;
+        --wood-dark:#3c2812;
+        --gold:#c9a227;
+        --gold-bright:#f0cd5a;
+        --green-deep:#1e4620;
+        --green:#2f6b2f;
+        --moss:#7fae56;
+        --grass:#69a24b;
+        --grass-dark:#4c7d38;
+        --dirt:#b98c5a;
+        --dirt-dark:#96693c;
+        --stone:#8d8578;
+        --stone-dark:#5f594e;
+        --card-shadow: 0 10px 30px rgba(0,0,0,.45);
+        --radius:14px;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#0a1208;
+          --bg2:#12200d;
+          --panel:#241c10;
+          --panel-2:#2e2415;
+          --ink:#f1e6c8;
+          --ink-soft:#c9b98f;
+          --wood:#6b4a2a;
+          --wood-dark:#4a3016;
+        }
+      }
+      *{box-sizing:border-box}
+      html,body{margin:0;padding:0}
+      body{
+        font-family:"Karla", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(1200px 700px at 50% -10%, #2c4d22 0%, transparent 60%),
+          radial-gradient(900px 600px at 85% 110%, #223d1b 0%, transparent 55%),
+          linear-gradient(180deg, var(--bg2), var(--bg));
+        color:var(--ink);
+        min-height:100vh;
+      }
+      .pixel{font-family:"Press Start 2P", monospace; letter-spacing:.02em}
+      .wrap{max-width:1180px;margin:0 auto;padding:14px 14px 40px}
+
+      /* ---------- top bar ---------- */
+      .topbar{
+        display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+        margin-bottom:12px;
+      }
+      .brand{display:flex;align-items:center;gap:10px;min-width:0}
+      .brand .leaf{
+        width:38px;height:38px;border-radius:10px;flex:0 0 auto;
+        background:radial-gradient(circle at 35% 30%, #8fce6e, #2f6b2f 70%);
+        border:3px solid var(--wood-dark);
+        display:grid;place-items:center;color:#ffe98a;font-size:18px;
+        box-shadow: inset 0 -6px 0 rgba(0,0,0,.25);
+      }
+      .brand h1{font-size:13px;line-height:1.5;margin:0;color:#f4ead2}
+      .brand p{margin:2px 0 0;font-size:12.5px;color:#b9cf9e;line-height:1.35}
+      .hud{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+      .starforce{
+        display:flex;align-items:center;gap:8px;
+        background:rgba(20,32,14,.75);border:2px solid var(--wood-dark);border-radius:999px;
+        padding:7px 12px;color:#f4ead2;
+      }
+      .starforce .label{font-size:8px}
+      .sf-stars{display:flex;gap:4px}
+      .sf-star{
+        width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+        font-size:14px;border:2px solid rgba(244,234,210,.35);color:rgba(244,234,210,.35);
+        background:rgba(255,255,255,.06);transition:all .25s;
+      }
+      .sf-star.got{color:#1c1406;border-color:#1c1406;box-shadow:0 0 0 2px rgba(0,0,0,.25), 0 0 14px rgba(240,205,90,.55)}
+      .btn{
+        appearance:none;border:2px solid var(--wood-dark);cursor:pointer;
+        background:linear-gradient(180deg,#7a5327,#5a3d22);color:#f7ecd0;
+        border-radius:10px;padding:9px 12px;font-weight:800;font-size:13px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 4px 0 var(--wood-dark);
+      }
+      .btn:active{transform:translateY(2px);box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 var(--wood-dark)}
+      .btn.ghost{background:rgba(20,32,14,.75);box-shadow:none}
+      .btn:focus-visible, .waystone:focus-visible, .dest:focus-visible{outline:3px solid var(--gold-bright);outline-offset:2px}
+
+      /* ---------- layout ---------- */
+      .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+      @media (max-width: 900px){ .layout{grid-template-columns:1fr} }
+
+      /* ---------- stage ---------- */
+      .stage-card{
+        background:linear-gradient(180deg,#2a1c0d,#1c1207);
+        border:3px solid var(--wood-dark);border-radius:18px;padding:10px;
+        box-shadow:var(--card-shadow);
+      }
+      .stage{
+        position:relative;width:100%;aspect-ratio:4/3;max-height:74vh;
+        border-radius:12px;overflow:hidden;touch-action:none;cursor:pointer;
+        background:linear-gradient(160deg, #3d6128, #2c4d1e 60%, #213a16);
+        border:2px solid #0f1d0a;
+      }
+      .stage::after{
+        content:"";position:absolute;inset:0;pointer-events:none;z-index:30;
+        background:
+          radial-gradient(ellipse at center, transparent 55%, rgba(6,16,4,.5) 100%),
+          radial-gradient(circle at 12% 88%, rgba(0,0,0,.16), transparent 26%),
+          radial-gradient(circle at 88% 10%, rgba(0,0,0,.14), transparent 24%);
+      }
+      .world{
+        position:absolute;left:0;top:0;width:2208px;height:1632px;
+        will-change:transform;transform-origin:0 0;
+      }
+      .world.shop-world{width:1152px;height:864px}
+      .world.decks-world{width:1152px;height:864px}
+      canvas.groundcv{
+        position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;
+        image-rendering:pixelated;background:#1e3d2a;
+      }
+      .tuft{position:absolute;width:10px;height:10px;pointer-events:none;opacity:.8;z-index:1}
+      .tuft::before,.tuft::after{content:"";position:absolute;bottom:0;width:3px;height:9px;background:#3f6d2e;border-radius:2px}
+      .tuft::before{left:1px;transform:rotate(-14deg)}
+      .tuft::after{right:1px;transform:rotate(14deg)}
+      .flower,.shroom{position:absolute;pointer-events:none;z-index:1}
+      .flower{width:8px;height:8px;border-radius:50%;background:#fff6c9;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+      .flower::after{content:"";position:absolute;inset:2px;border-radius:50%;background:#f0cd5a}
+      .shroom{width:14px;height:11px}
+      .shroom i{position:absolute;left:1px;top:0;width:12px;height:8px;border-radius:8px 8px 3px 3px;background:#e8833a;border:1px solid #7a3d16}
+      .shroom b{position:absolute;left:5px;top:7px;width:4px;height:4px;background:#f4ead2;border-radius:1px}
+      /* Gentle Forest decor sprites: solids anchor at their base centre and
+         depth-sort against the player (z set per-frame in renderPlayer);
+         flower patches anchor at their centre and always sit at z-index 1 */
+      .gf-solid{position:absolute;transform:translate(-50%,-100%);pointer-events:none;image-rendering:pixelated;z-index:7}
+      .gf-flower{position:absolute;transform:translate(-50%,-50%);pointer-events:none;image-rendering:pixelated;z-index:1}
+      .mist{
+        position:absolute;width:190px;height:64px;border-radius:50%;pointer-events:none;z-index:3;
+        background:radial-gradient(ellipse, rgba(230,240,225,.45), transparent 70%);filter:blur(2px);
+      }
+      @media (prefers-reduced-motion: no-preference){
+        .mist{animation:drift 7s ease-in-out infinite alternate}
+        @keyframes drift{from{transform:translateX(-10px)}to{transform:translateX(12px)}}
+        .tree-img{animation:breathe 5s ease-in-out infinite}
+        @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+      }
+      .tree-wrap{
+        position:absolute;left:1104px;top:806px;width:400px;z-index:4;text-align:center;
+        transform:translate(-50%,-88%);cursor:pointer;
+      }
+      .tree-img{width:100%;height:auto;display:block;image-rendering:pixelated;filter:drop-shadow(0 16px 12px rgba(0,0,0,.45))}
+      .tree-shadow{position:absolute;left:50%;bottom:5%;width:64%;height:22px;transform:translateX(-50%);background:radial-gradient(ellipse, rgba(0,0,0,.42), transparent 70%);border-radius:50%}
+      .talk-hint{
+        position:absolute;left:50%;transform:translateX(-50%);top:calc(100% - 6px);white-space:nowrap;
+        font-size:7px;color:#ffe9a8;text-shadow:0 2px 0 rgba(0,0,0,.7);opacity:.95;
+      }
+
+      /* waystones */
+      .waystone{
+        position:absolute;z-index:6;width:104px;
+        transform:translate(-50%,-90%);
+        background:none;border:none;cursor:pointer;padding:0;text-align:center;color:#fff;
+      }
+      .waystone img{
+        width:100%;height:auto;display:block;image-rendering:pixelated;
+        filter:drop-shadow(0 8px 6px rgba(0,0,0,.4));
+      }
+      .waystone .wlabel{
+        margin-top:2px;display:inline-block;font-size:7px;line-height:1.4;
+        background:rgba(14,22,9,.82);border:2px solid rgba(244,234,210,.25);border-radius:999px;padding:5px 7px;color:#f4ead2;
+      }
+      .waystone .gotdot{
+        position:absolute;top:-8px;right:0;width:22px;height:22px;border-radius:50%;
+        display:none;place-items:center;font-size:12px;color:#1c1406;border:2px solid #1c1406;z-index:2;
+      }
+      .waystone.got .gotdot{display:grid}
+      .waystone.near img{filter:drop-shadow(0 8px 6px rgba(0,0,0,.4)) drop-shadow(0 0 12px rgba(240,205,90,.95))}
+
+      /* player */
+      .player{
+        position:absolute;z-index:8;width:120px;height:120px;
+        transform:translate(-50%,-93%);
+        pointer-events:none;filter:drop-shadow(0 6px 4px rgba(0,0,0,.4));
+      }
+      .player canvas{width:100%;height:100%;image-rendering:pixelated;display:block;position:relative;z-index:1;transform-origin:50% 92%}
+      .player .shadow{position:absolute;left:32px;right:32px;bottom:4px;height:10px;background:radial-gradient(ellipse, rgba(0,0,0,.45), transparent 70%);border-radius:50%}
+      .prompt{
+        position:absolute;z-index:9;transform:translate(-50%,-100%);pointer-events:none;
+        background:#fff8df;color:#2b2114;border:2px solid #3c2812;border-radius:10px;
+        padding:7px 9px;font-size:12px;font-weight:800;box-shadow:0 6px 14px rgba(0,0,0,.35);white-space:nowrap;
+      }
+      .prompt::after{content:"";position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:4px solid transparent;border-top-color:#3c2812}
+
+      /* camera zoom controls (bottom-right of the stage, clear of the D-pad row) */
+      .zoomctl{position:absolute;right:10px;bottom:10px;z-index:40;display:flex;gap:6px}
+      .zoomctl button{
+        width:44px;height:44px;border-radius:50%;border:2px solid var(--wood-dark);
+        background:rgba(20,32,14,.88);color:#ffe9a8;font-size:24px;font-weight:800;line-height:1;
+        cursor:pointer;display:grid;place-items:center;touch-action:none;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 4px 0 rgba(0,0,0,.5);
+      }
+      .zoomctl button:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 2px 0 rgba(0,0,0,.5)}
+      .zoomctl button:focus-visible{outline:3px solid var(--gold-bright);outline-offset:2px}
+
+      /* dialogue */
+      .dialogue{
+        margin-top:10px;background:var(--panel);border:3px solid var(--wood-dark);border-radius:14px;
+        padding:12px;display:flex;gap:12px;box-shadow:var(--card-shadow);
+      }
+      .avatar{
+        width:58px;height:58px;flex:0 0 auto;border-radius:12px;border:3px solid var(--wood-dark);
+        background:radial-gradient(circle at 50% 35%, #cfe8a8, #5d8a3c);overflow:hidden;position:relative;
+      }
+      .avatar img{position:absolute;width:190%;left:-45%;top:-40%;image-rendering:pixelated}
+      .dialogue h2{margin:0 0 4px;font-size:8px;color:var(--ink)}
+      .dialogue p{margin:0;font-size:15px;line-height:1.5;color:var(--ink)}
+      .dialogue .sub{margin-top:6px;font-size:12px;color:var(--ink-soft)}
+      .dialogue-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+      .dialogue-actions[hidden]{display:none}
+      .dialogue-actions .btn{padding:7px 10px;font-size:12px}
+
+      /* controls */
+      .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:10px}
+      .keys{font-size:12px;color:#cfe3b4;line-height:1.5}
+      .keys b{color:#fff3c4}
+      .dpad{display:none;gap:6px;align-items:center}
+      @media (pointer:coarse){ .dpad{display:flex} }
+      .dpad .grid{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px}
+      .dpad button{
+        border:2px solid var(--wood-dark);border-radius:10px;background:rgba(20,32,14,.85);color:#f4ead2;
+        font-size:16px;cursor:pointer;
+      }
+      .dpad button:active{background:#3a5a24}
+      .dpad .act{width:64px;height:64px;border-radius:50%;font-size:10px}
+
+      /* ---------- side panel ---------- */
+      .panel{
+        background:var(--panel);border:3px solid var(--wood-dark);border-radius:16px;
+        box-shadow:var(--card-shadow);overflow:hidden;
+      }
+      .panel-head{
+        background:linear-gradient(180deg,#6d4a26,#54381c);color:#f7ecd0;padding:12px 14px;border-bottom:3px solid var(--wood-dark);
+      }
+      .panel-head h2{margin:0;font-size:9px;line-height:1.6}
+      .panel-head p{margin:6px 0 0;font-size:13px;line-height:1.45;color:#e8d9ae}
+      .trail-list{display:grid;gap:8px;padding:12px}
+      .trail-row{
+        width:100%;text-align:left;display:flex;gap:10px;align-items:center;cursor:pointer;
+        background:var(--panel-2);border:2px solid color-mix(in srgb, var(--wood-dark) 65%, transparent);
+        border-radius:12px;padding:10px;color:var(--ink);
+      }
+      .trail-row:hover{filter:brightness(1.03)}
+      .trail-row.selected{border-color:var(--wood-dark);box-shadow:0 0 0 2px var(--gold-bright)}
+      .trail-row .chip{
+        width:42px;height:42px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;
+        border:2px solid var(--wood-dark);overflow:hidden;
+      }
+      .trail-row .chip img{height:38px;width:auto;image-rendering:pixelated;filter:drop-shadow(0 2px 1px rgba(0,0,0,.35))}
+      .trail-row h3{margin:0;font-size:14px}
+      .trail-row p{margin:2px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.35}
+      .trail-row .status{margin-left:auto;font-size:10px;font-weight:800;white-space:nowrap}
+      .detail{padding:0 14px 14px;display:none}
+      .detail.open{display:block}
+      .detail .endpoint{
+        border:2px dashed color-mix(in srgb, var(--wood-dark) 55%, transparent);border-radius:12px;padding:10px;margin-top:2px;
+        background:color-mix(in srgb, var(--panel) 70%, white);
+      }
+      @media (prefers-color-scheme: dark){ .detail .endpoint{background:rgba(255,255,255,.05)} }
+      .detail h3{margin:0 0 6px;font-size:15px}
+      .detail p{margin:0 0 8px;font-size:13.5px;line-height:1.55}
+      .dest-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+      .dest{
+        font-size:12px;font-weight:800;border:2px solid var(--wood-dark);border-radius:999px;padding:6px 9px;
+        background:#fff8df;color:#2b2114;text-decoration:none;display:inline-flex;gap:6px;align-items:center;
+      }
+      @media (prefers-color-scheme: dark){ .dest{background:#3a2d17;color:#f1e6c8} }
+      a.dest:hover{filter:brightness(1.05)}
+      .reward{display:flex;gap:8px;align-items:center;font-size:12.5px;line-height:1.4;margin:8px 0}
+      .swatch{width:34px;height:34px;border-radius:9px;border:2px solid var(--wood-dark);flex:0 0 auto}
+      .fine{font-size:11.5px;color:var(--ink-soft);line-height:1.45}
+      .complete{
+        display:none;margin:12px;padding:12px;border-radius:12px;border:3px solid var(--wood-dark);
+        background:linear-gradient(135deg,#1b2440,#2b1d4d 55%,#3a2a12);color:#ffeeb0;
+      }
+      .complete.show{display:block}
+      .complete h3{margin:0 0 6px;font-size:9px;line-height:1.6}
+      .complete p{margin:0;font-size:13px;line-height:1.5;color:#f4ead2}
+      /* ---------- shop clearing sites ---------- */
+      .site{position:absolute;z-index:7;cursor:pointer}
+      button.site{background:none;border:none;padding:0}
+      .site img{width:100%;height:auto;display:block;image-rendering:pixelated}
+      .woodshop{left:180px;top:40px;width:384px}
+      .woodshop img{filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
+      .library{left:320px;top:36px;width:512px}
+      .library img{filter:drop-shadow(0 12px 12px rgba(0,0,0,.35))}
+      .temple{left:740px;top:300px;width:240px}
+      .temple img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
+      .spark-badge{
+        position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
+        width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+        background:radial-gradient(circle at 35% 30%, #ffe98a, #e9c44f 70%);
+        border:2px solid #1c1406;color:#1c1406;font-size:17px;z-index:2;
+        box-shadow:0 0 16px rgba(240,205,90,.8);
+      }
+      @media (prefers-reduced-motion: no-preference){
+        .spark-badge{animation:sparkpulse 1.8s ease-in-out infinite}
+        @keyframes sparkpulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.14)}}
+        .toast{animation:toastpop .25s ease-out}
+        @keyframes toastpop{from{transform:translateX(-50%) scale(.9);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+      }
+      .npc{
+        position:absolute;z-index:7;background:none;border:none;cursor:pointer;padding:0;text-align:center;color:#fff;
+      }
+      .npc img{display:block;image-rendering:pixelated;filter:drop-shadow(0 6px 5px rgba(0,0,0,.4))}
+      .npc .wlabel{
+        margin-top:1px;display:inline-block;font-size:7px;line-height:1.4;
+        background:rgba(14,22,9,.82);border:2px solid rgba(244,234,210,.25);border-radius:999px;padding:5px 7px;color:#f4ead2;
+      }
+      .npc.bear{left:292px;top:376px;width:132px;transform:translate(-50%,-95%)}
+      .npc.bee{left:492px;top:376px;width:108px;transform:translate(-50%,-92%)}
+      .npc.sloth{left:700px;top:430px;width:120px;transform:translate(-50%,-95%)}
+      .npc.near img{filter:drop-shadow(0 6px 5px rgba(0,0,0,.4)) drop-shadow(0 0 12px rgba(240,205,90,.95))}
+      .npc:focus-visible, .site:focus-visible{outline:3px solid var(--gold-bright);outline-offset:2px}
+      .avatar.whoface img{width:100%;height:100%;left:0;top:0;object-fit:contain;padding:3px}
+      .toast{
+        position:absolute;left:50%;top:16px;transform:translateX(-50%);z-index:45;
+        background:#fff8df;color:#2b2114;border:3px solid #3c2812;border-radius:12px;
+        padding:10px 14px;font-size:9px;line-height:1.7;box-shadow:0 10px 24px rgba(0,0,0,.45);
+        max-width:88%;text-align:center;
+      }
+      /* room-change fade (lobby <-> shop screen) */
+      .fadeveil{
+        position:absolute;inset:0;background:#060d04;opacity:0;pointer-events:none;z-index:60;
+        transition:opacity .3s ease;
+      }
+      .fadeveil.on{opacity:1}
+      @media (prefers-reduced-motion: reduce){ .fadeveil{transition-duration:.05s} }
+
+      /* ---------- satchel ---------- */
+      .satchel{margin:0 14px 14px;padding-top:12px;border-top:2px dashed color-mix(in srgb, var(--wood-dark) 45%, transparent)}
+      .satchel h3{margin:0 0 8px;font-size:9px;line-height:1.6}
+      .satchel-item{display:flex;gap:10px;align-items:center;font-size:13.5px;line-height:1.4}
+      .token-swatch{
+        width:34px;height:34px;border-radius:50%;flex:0 0 auto;border:2px solid var(--wood-dark);
+        background:radial-gradient(circle at 38% 32%, #d9ab6d, #a06a33 55%, #7a4d21);
+        box-shadow:inset 0 0 0 3px rgba(60,40,18,.35);
+      }
+      .satchel-item + .satchel-item{margin-top:8px}
+      .book-swatch{
+        width:34px;height:34px;border-radius:6px;flex:0 0 auto;border:2px solid var(--wood-dark);
+        background:linear-gradient(90deg,#173d1d 0 22%,#2f6b2f 22% 100%);
+        box-shadow:inset 0 0 0 2px rgba(240,205,90,.65);
+      }
+      .jewel-swatch{
+        width:34px;height:34px;border-radius:50%;flex:0 0 auto;border:2px solid var(--wood-dark);
+        background:radial-gradient(circle at 38% 30%, #bfe3ff, #3f7fc4 55%, #274b78);
+        box-shadow:inset 0 0 0 3px rgba(255,255,255,.25);
+      }
+      .footer-note{margin-top:12px;font-size:12px;color:#a9c48d;line-height:1.5;text-align:center}
+      .footer-note a{color:#ffe9a8}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">
+          <div class="leaf" aria-hidden="true">✦</div>
+          <div>
+            <h1 class="pixel">DRUID GROVE — LOBBY</h1>
+            <p>The Forest Root Domain. Grandfather Linkwood at the heart, five waystones on winding trails — walk them all.</p>
+          </div>
+        </div>
+        <div class="hud">
+          <div class="starforce" aria-label="StarForce progress">
+            <span class="label pixel">STARFORCE</span>
+            <span class="sf-stars" id="sfStars"></span>
+            <span id="sfCount" style="font-weight:800;font-size:13px">0 / 5</span>
+          </div>
+          <button class="btn ghost" id="resetBtn" type="button">Reset grove</button>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div>
+          <div class="stage-card">
+            <div class="stage" id="stage" role="application" aria-label="Druid grove lobby. Use arrow keys or WASD to walk, E to interact.">
+              <div class="world" id="world">
+                <canvas class="groundcv" id="ground" width="2208" height="1632" aria-hidden="true"></canvas>
+                <div id="decor"></div>
+                <div class="mist" style="left:120px;top:1420px"></div>
+                <div class="mist" style="left:1850px;top:120px;width:150px"></div>
+                <div class="mist" style="left:1720px;top:1380px;width:160px"></div>
+
+                <div class="tree-wrap" id="treeWrap" title="Talk to Grandfather Linkwood">
+                  <img class="tree-img" src="assets/tree.png" alt="Grandfather Linkwood, an ancient oak tree spirit with a kind face in his bark and a white mossy beard" />
+                  <div class="tree-shadow"></div>
+                  <div class="talk-hint pixel">TAP TO TALK</div>
+                </div>
+
+                <div id="stones"></div>
+
+                <div class="player" id="player">
+                  <div class="shadow"></div>
+                  <canvas id="playerCanvas" width="256" height="256" aria-hidden="true"></canvas>
+                </div>
+                <div class="prompt" id="prompt" hidden></div>
+              </div>
+
+              <div class="world shop-world" id="shopWorld" style="display:none">
+                <canvas class="groundcv" id="groundShop" width="1152" height="864" aria-hidden="true"></canvas>
+                <div id="decorShop"></div>
+                <div class="mist" style="left:70px;top:690px"></div>
+                <div class="mist" style="left:920px;top:90px;width:150px"></div>
+
+                <div class="site woodshop" id="woodshopEl" title="The Woodshop">
+                  <img src="assets/woodshop-256.png" alt="The woodshop — a timber-framed workshop with a mossy green shingle roof, a lantern by the door, a workbench and log piles out front" />
+                </div>
+                <button type="button" class="site temple" id="templeEl" aria-label="Visit the old shrine — the Shop trail's gold spark waits there">
+                  <img src="assets/temple-shop-192.png" alt="An old mossy stone shrine — a ring of carved standing stones around a pedestal holding a gold star" />
+                  <span class="spark-badge" id="templeSpark" aria-hidden="true">★</span>
+                </button>
+                <button type="button" class="npc bear" id="bearEl" aria-label="Talk to the bear woodworker">
+                  <img src="assets/bear-woodworker-96.png" alt="" />
+                  <span class="wlabel pixel">BEAR</span>
+                </button>
+                <button type="button" class="npc bee" id="beeEl" aria-label="Talk to the bee designer">
+                  <img src="assets/bee-designer-96.png" alt="" />
+                  <span class="wlabel pixel">BEE</span>
+                </button>
+              </div>
+              <div class="world decks-world" id="decksWorld" style="display:none">
+                <canvas class="groundcv" id="groundDecks" width="1152" height="864" aria-hidden="true"></canvas>
+                <div id="decorDecks"></div>
+                <div class="mist" style="left:80px;top:700px"></div>
+                <div class="mist" style="left:940px;top:620px;width:150px"></div>
+
+                <div class="site library" id="libraryEl" title="The Sylvan Library">
+                  <img src="assets/library-256.png" alt="The Sylvan Library — a library grown into a great hollow tree: an arched walnut door, round glowing windows, lantern posts and book stacks by the steps" />
+                </div>
+                <button type="button" class="npc sloth" id="slothEl" aria-label="Talk to the sloth librarian">
+                  <img src="assets/sloth-librarian-96.png" alt="" />
+                  <span class="wlabel pixel">SLOTH</span>
+                </button>
+              </div>
+              <div class="fadeveil" id="fadeVeil" aria-hidden="true"></div>
+              <div class="zoomctl" role="group" aria-label="Camera zoom">
+                <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+                <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+              </div>
+              <div class="toast pixel" id="toast" role="status" hidden></div>
+            </div>
+          </div>
+
+          <div class="dialogue" aria-live="polite">
+            <div class="avatar" id="dialogueAvatar" aria-hidden="true"><img id="dialogueAvatarImg" src="assets/tree.png" alt="" /></div>
+            <div>
+              <h2 class="pixel" id="dialogueName">GRANDFATHER LINKWOOD</h2>
+              <p id="dialogueText">Walk my trails, young druid. Each path leads somewhere I cannot go. Return and tell me what you found.</p>
+              <div class="sub" id="dialogueSub">Wander the grove — tap a waystone, or pick a trail from the list.</div>
+              <div class="dialogue-actions" id="dialogueActions" hidden></div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <div class="keys">
+              <b>Walk:</b> WASD / arrow keys, or tap the grass &nbsp;·&nbsp; <b>Interact:</b> E / Space &nbsp;·&nbsp; <b>Zoom:</b> + / − keys, pinch, or Ctrl + scroll &nbsp;·&nbsp; Tap a waystone to walk to it
+            </div>
+            <div class="dpad" aria-label="Touch controls">
+              <div class="grid">
+                <span></span><button type="button" data-dir="up" aria-label="Walk up">▲</button><span></span>
+                <button type="button" data-dir="left" aria-label="Walk left">◀</button>
+                <button type="button" data-dir="down" aria-label="Walk down">▼</button>
+                <button type="button" data-dir="right" aria-label="Walk right">▶</button>
+              </div>
+              <button type="button" class="act pixel" id="actBtn">VISIT</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel" aria-label="Trails">
+          <div class="panel-head">
+            <h2 class="pixel">FIVE TRAILS · FIVE SPARKS</h2>
+            <p>Stones mark the main roads. Wood would mark a fork — the only forks out there are Community and Social.</p>
+          </div>
+          <div class="trail-list" id="trailList"></div>
+          <div class="detail" id="detail"></div>
+          <div class="satchel">
+            <h3 class="pixel">SATCHEL · COSMETICS</h3>
+            <div id="satchelList"></div>
+          </div>
+          <div class="complete" id="completeBox">
+            <h3 class="pixel">★ STARFORGED CLOAK UNLOCKED ★</h3>
+            <p>All five sparks gathered. Midnight blue, woven with tiny star-points — the grove&rsquo;s &ldquo;I walked every trail&rdquo; flex, ready for the share portrait.</p>
+          </div>
+        </aside>
+      </div>
+
+      <p class="footer-note">
+        Decks trail opens the real <a href="https://sylvan-library.vercel.app" target="_blank" rel="noopener">Sylvan Library</a> ·
+        <a href="https://linktr.ee/grizzlygamingd20" target="_blank" rel="noopener">Follow Grizzly Gaming</a>
+      </p>
+    </div>
+
+    <script>
+      (function(){
+        "use strict";
+
+        // ---------- world geometry ----------
+        var COLS = 46, ROWS = 34, TILE = 48;
+        var WORLD_W = COLS * TILE, WORLD_H = ROWS * TILE; // 2208 x 1632
+        var TREE = { x: 1104, y: 806 };        // Linkwood root base (px)
+        var TRUNK = { x: 1104, y: 800, r: 88 }; // walk blocker
+        var SPAWN = { x: 1128, y: 984 };
+        var PLAZA = { x: 23, y: 16.8 };        // tile coords
+        // The SHOP screen: its own room (24x18 tiles), Zelda-style — walk up the
+        // Shop trail past the waystone to fade into it; walk off its bottom edge
+        // to fade back to the lobby at the waystone. All the shop sites live there.
+        var SHOP_COLS = 24, SHOP_ROWS = 18;
+        var SHOP_W = SHOP_COLS * TILE, SHOP_H = SHOP_ROWS * TILE; // 1152 x 864
+        var SHOP_ENTRY = { x: 576, y: 754 };   // just inside the shop screen's bottom edge
+        var SHOP_DOOR = { x: 405, y: 379 };    // walk-to point in front of the woodshop door
+        var SHOPBUILD = { x0: 204, x1: 540, y0: 153, y1: 315 }; // woodshop footprint blocker
+        var TEMPLE = { x: 860, y: 448, x0: 768, x1: 952, y0: 344, y1: 506 }; // shrine anchor + blocker
+        // The DECKS screen: same Zelda-room shape as the shop screen — walk up the
+        // Decks trail past its waystone to fade in; walk off the bottom edge to
+        // fade back to the lobby at the waystone. The library + sloth live there.
+        var DECKS_COLS = 24, DECKS_ROWS = 18;
+        var DECKS_W = DECKS_COLS * TILE, DECKS_H = DECKS_ROWS * TILE; // 1152 x 864
+        var DECKS_ENTRY = { x: 576, y: 754 };  // just inside the decks screen's bottom edge
+        var DECKS_DOOR = { x: 576, y: 430 };   // walk-to point in front of the library door
+        var LIBBUILD = { x0: 348, x1: 804, y0: 190, y1: 392 }; // library footprint blocker
+        var SLOTH = { x: 700, y: 430 };        // the librarian, standing by the door
+        var room = "lobby"; // "lobby" | "shop" | "decks" — which screen she is on
+        var pendingDoor = false;     // panel sent her up the trail: after the fade, keep walking to the woodshop door
+        var pendingLibrary = false;  // panel sent her up the Decks trail: after the fade, keep walking to the library door
+        var pendingLobbyWalk = null; // panel picked another trail from a side screen: after fading back, walk to that waystone
+        var slothMet = false; // the librarian's first-talk line is spent
+        var gateMute = null; // trail id whose lobby gate stays shut during a panel-sent walk back out of its room
+        var cosmetics = {}; // cosmetic id -> true (this session only, like the sparks)
+        var templeArmed = false; // shrine described, next visit gathers the spark
+
+        var TRAILS = [
+          { id:"shop", name:"Shop", rune:"◆", color:"#e9c44f", dark:"#8a6d14", tx:28.5, ty:24,
+            tag:"Gold spark · the coin-star",
+            endpoint:"The Woodshop",
+            blurb:"A village woodshop just beyond the clearing — the shortest road out, straight from spawn. A bear runs the shop; a honey-bee fashion designer keeps the token counter.",
+            dests:[{label:"Etsy — opening soon"}],
+            reward:"Coin-Weave Cloak", rewardNote:"Gold-thread cloak and a rowan-wood staff from the stall keeper." },
+          { id:"community", name:"Community", rune:"●", color:"#f0a04b", dark:"#8f5a1d", tx:6, ty:10,
+            tag:"Amber spark · the hearth-star",
+            endpoint:"Stone Circle",
+            blurb:"An old stone circle where the rock people sit and the grove gathers to talk. This trail forks at a wooden sign — Discord one way, WhatsApp the other.",
+            dests:[{label:"Discord"},{label:"WhatsApp"}],
+            reward:"Hearth Cloak", rewardNote:"Ember-amber cloak and a campfire-smoked staff." },
+          { id:"watch", name:"Watch", rune:"◎", color:"#63b3ed", dark:"#2b5f8a", tx:40.5, ty:6.5,
+            tag:"Blue spark · the pool-star",
+            endpoint:"Faerie Fountain",
+            blurb:"A faerie fountain where the turtle folk watch moving pictures on the water. YouTube ripples here today; Twitch and TikTok can join this same trail later.",
+            dests:[{label:"YouTube"},{label:"Twitch · later"},{label:"TikTok · later"}],
+            reward:"Pool Cloak", rewardNote:"Deep-blue cloak and a scrying-glass staff." },
+          { id:"social", name:"Social", rune:"≋", color:"#b78ae8", dark:"#5f3d8f", tx:41.5, ty:24,
+            tag:"Purple spark · the whisper-star",
+            endpoint:"Campfire Circle",
+            blurb:"An eternal campfire ringed by will-o'-wisps, whose light keeps the ghosts polite. The grove's busiest crossroads — a wooden post splits three ways here.",
+            dests:[{label:"Instagram"},{label:"X"},{label:"Threads"}],
+            reward:"Dusk Cloak", rewardNote:"Dusk-purple cloak and a whisper-carved staff." },
+          { id:"decks", name:"Decks", rune:"▤", color:"#69d186", dark:"#256b38", tx:7, ty:27.5,
+            tag:"Green spark · the grove-star",
+            endpoint:"Sylvan Library",
+            blurb:"A library grown into the trees, staffed by moss sloths who know where every card sleeps. This one is Grizzly's own — the road opens the real Sylvan Library.",
+            dests:[{label:"Sylvan Library", href:"https://sylvan-library.vercel.app"},{label:"Moxfield", href:"https://moxfield.com/users/GrizzlyDann"}],
+            reward:"Grove Cloak", rewardNote:"Deep-green cloak and the brass-ring staff — the scanner's circle, carried." }
+        ];
+        TRAILS.forEach(function(t){ t.sx = t.tx * TILE; t.sy = t.ty * TILE; });
+        var shopTrailRef = null;
+        var decksTrailRef = null;
+        TRAILS.forEach(function(t){ if (t.id === "shop") shopTrailRef = t; if (t.id === "decks") decksTrailRef = t; });
+
+        // winding path waypoints (tile coords), from the plaza to each waystone
+        var PATHS = {
+          shop:      [[25,18.2],[26.6,20.2],[27.8,22],[28.4,23.6]],
+          community: [[20.8,14.6],[16.8,12],[12.4,10.8],[8.6,10.2],[6.4,10]],
+          watch:     [[25.2,14.2],[29,10.8],[33.5,8.6],[37.5,7.2],[40,6.6]],
+          social:    [[26.6,17.4],[31,19.2],[35.5,21.2],[38.8,23],[41,23.8]],
+          decks:     [[20.6,18.6],[17,20.6],[13,22.8],[9.6,25],[7.4,26.8]]
+        };
+
+        // ---------- asset URLs: plain paths, no query strings ----------
+        // av() used to append "?v=" + the build stamp to every asset URL
+        // as image-cache busting. That broke on the published host: it
+        // resolves local assets by exact path, so a query-stringed URL
+        // matched nothing and sprites rendered as error windows. Asset
+        // URLs now go out exactly as written — plain relative paths, no
+        // query string of any kind. Freshness is handled without touching
+        // asset URLs at all:
+        //   - the head script's GROVE_BUILD check reloads the document
+        //     itself whenever a newer build is published, and
+        //   - when a piece of art itself changes, it ships under a new
+        //     versioned filename (the walk2-* frames are the precedent),
+        //     so no cache can hold the old art under the new name.
+        // av() stays as the single funnel every asset URL passes through,
+        // so this remains a one-line decision — but it must never add a
+        // query string again.
+        function av(u){ return u; }
+
+        var LINKWOOD_LINES = [
+          "Walk my trails, young druid. Each path leads somewhere I cannot go. Return and tell me what you found.",
+          "My roots are the trailheads. Stone means a main road, little one. Wood means a turnoff.",
+          "Five sparks sleep at the ends of my roots. Gather them, and the grove will remember your name.",
+          "A new link does not need a new road. It branches off a trail that already hums, and the grove makes room.",
+          "Hmm. You smell of rain and other places. Good. That is what trails are for."
+        ];
+
+        // ---------- seeded rng (stable layout every load) ----------
+        function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+        var rng = mulberry32(20261015);
+
+        // ---------- ground: Wang-tile canvas ----------
+        // Wang tilesets live in assets/tiles/: grass-dirt-gentle-v2 (sunlit grass +
+        // rich packed-earth) and grass-dark-trans-gentle-v2 (the same grass
+        // against hand-made dark grass — sections of the light grass, cropped
+        // and darkened, so the texture matches; its filenames swap -lower for
+        // -dark). Filenames encode
+        // each tile's Wang corners — NW/NE/SW/SE, upper = grass, lower/dark =
+        // ground, a few corners are "transition" blends. TILE_POOLS groups every
+        // sliced variant by its ground-corner mask (bits NW=8 NE=4 SW=2 SE=1, the
+        // same bits dirtAt produces below); DARK_POOLS is the same list with the
+        // -dark names. Masks 6 and 9 (pure diagonals) were never sliced and never
+        // occur in this terrain. Fully-dark tiles are filled from
+        // assets/tiles/grass-dark-gentle/ (5 dark-grass crops) and fully-dirt tiles from
+        // assets/tiles/dirt-trail-64-v2.png (the rich packed-earth trail texture).
+        var TILE_POOLS = {
+          0:["NW-upper_NE-upper_SW-upper_SE-upper.png","NW-upper_NE-upper_SW-transition_SE-transition.png","NW-upper_NE-upper_SW-transition_SE-upper.png","NW-upper_NE-upper_SW-upper_SE-transition.png"],
+          1:["NW-upper_NE-transition_SW-upper_SE-lower.png","NW-upper_NE-transition_SW-upper_SE-lower__t1_30_r11_c2.png"],
+          2:["NW-transition_NE-upper_SW-lower_SE-upper.png","NW-transition_NE-upper_SW-lower_SE-upper__t1_27_r9_c4.png"],
+          3:["NW-transition_NE-transition_SW-lower_SE-lower.png"],
+          4:["NW-upper_NE-lower_SW-upper_SE-upper.png","NW-upper_NE-lower_SW-transition_SE-upper.png"],
+          5:["NW-upper_NE-lower_SW-upper_SE-lower.png","NW-upper_NE-lower_SW-transition_SE-lower.png","NW-upper_NE-lower_SW-upper_SE-lower__t1_14_r4_c6.png"],
+          7:["NW-transition_NE-lower_SW-lower_SE-lower.png"],
+          8:["NW-lower_NE-upper_SW-upper_SE-upper.png","NW-lower_NE-upper_SW-upper_SE-transition.png"],
+          10:["NW-lower_NE-upper_SW-lower_SE-upper.png","NW-lower_NE-upper_SW-lower_SE-transition.png","NW-lower_NE-upper_SW-lower_SE-upper__t1_4_r4_c1.png"],
+          11:["NW-lower_NE-transition_SW-lower_SE-lower.png"],
+          12:["NW-lower_NE-lower_SW-upper_SE-upper.png"],
+          13:["NW-lower_NE-lower_SW-upper_SE-lower.png"],
+          14:["NW-lower_NE-lower_SW-lower_SE-upper.png"],
+          15:["NW-lower_NE-lower_SW-lower_SE-lower.png"]
+        };
+        var DARK_POOLS = {}; // grass-dark-trans: the same Wang patterns, -lower -> -dark
+        Object.keys(TILE_POOLS).forEach(function(mk){
+          DARK_POOLS[mk] = TILE_POOLS[mk].map(function(fn){ return fn.replace(/-lower/g, "-dark"); });
+        });
+        var DARK_FILL = ["dark-grass-gentle-0.png","dark-grass-gentle-1.png","dark-grass-gentle-2.png","dark-grass-gentle-3.png","dark-grass-gentle-4.png"];
+        var TILE_DIRS = { dirt:"assets/tiles/grass-dirt-gentle-v2/", dark:"assets/tiles/grass-dark-trans-gentle-v2/" };
+        var TILE_SETS = { dirt: TILE_POOLS, dark: DARK_POOLS };
+        var tileImgs = { dirt:{}, dark:{} }; // set -> filename -> Image (filled by the boot loader)
+        var darkFillImgs = []; // the 5 dark-grass fills (assets/tiles/grass-dark-gentle/)
+        var dirtTrailImg = null; // assets/tiles/dirt-trail-64-v2.png — the trail dirt fill
+        var darkRng = mulberry32(20261015); // its own seeded stream, so the dark-fill scatter never perturbs the terrain/decor rng sequence
+        function tileFor(setName, mask, c, r, salt){ // variant pick is a coordinate hash — no rng, so the seeded decor layout is untouched
+          var pools = TILE_SETS[setName]; // each set has its own filename list (dirt: -lower, dark: -dark)
+          var pool = pools[mask] || pools[0];
+          return tileImgs[setName][pool[(c * 31 + r * 17 + salt * 7) % pool.length]];
+        }
+        function darkBandAt(i, j){ // corner-lattice point: the dark-grass band around the lobby's edge
+          return i <= 2 || j <= 2 || i >= COLS - 2 || j >= ROWS - 2;
+        }
+        function segDist(px, py, ax, ay, bx, by){
+          var dx = bx - ax, dy = by - ay;
+          var len2 = dx*dx + dy*dy;
+          var t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+          t = Math.max(0, Math.min(1, t));
+          var ex = ax + t * dx - px, ey = ay + t * dy - py;
+          return Math.sqrt(ex*ex + ey*ey);
+        }
+        var SEGMENTS = [];
+        Object.keys(PATHS).forEach(function(id){
+          var pts = [[PLAZA.x, PLAZA.y]].concat(PATHS[id]);
+          for (var i = 0; i < pts.length - 1; i++) SEGMENTS.push([pts[i], pts[i+1]]);
+        });
+        function dirtAt(i, j){ // corner-lattice point in tile coords
+          var dx = i - PLAZA.x, dy = j - PLAZA.y;
+          if (dx*dx + dy*dy < 3.05 * 3.05) return true;
+          for (var k = 0; k < TRAILS.length; k++){
+            dx = i - TRAILS[k].tx; dy = j - TRAILS[k].ty;
+            if (dx*dx + dy*dy < 1.7 * 1.7) return true;
+          }
+          for (var s = 0; s < SEGMENTS.length; s++){
+            if (segDist(i, j, SEGMENTS[s][0][0], SEGMENTS[s][0][1], SEGMENTS[s][1][0], SEGMENTS[s][1][1]) < 1.18) return true;
+          }
+          return false;
+        }
+        function shopDirtAt(i, j){ // corner-lattice point in shop-room tile coords
+          var ex = (i - 12) / 10.8, ey = (j - 9) / 7.9;
+          if (ex*ex + ey*ey < 1) return true; // the woodshop clearing, dirt like the plaza
+          if (Math.abs(i - 12) < 1.25 && j >= 13) return true; // dirt path off the bottom edge — the way back to the lobby
+          return false;
+        }
+        function decksDirtAt(i, j){ // corner-lattice point in decks-room tile coords — same clearing shape as the shop's
+          var ex = (i - 12) / 10.8, ey = (j - 9) / 7.9;
+          if (ex*ex + ey*ey < 1) return true; // the library clearing, dirt like the plaza
+          if (Math.abs(i - 12) < 1.25 && j >= 13) return true; // dirt path off the bottom edge — the way back to the lobby
+          return false;
+        }
+        var tileMask = []; // lobby per-tile mask, reused for decor placement
+        function paintGround(cv, cols, rows, dirtFn, darkFn, salt){
+          var g = cv.getContext("2d");
+          g.imageSmoothingEnabled = false; // 32px tiles drawn at the 48px grid — keep the pixels crisp
+          g.fillStyle = "#1e3d2a"; g.fillRect(0, 0, cv.width, cv.height);
+          var mask = [];
+          for (var r = 0; r < rows; r++){
+            for (var c = 0; c < cols; c++){
+              var m = (dirtFn(c, r) ? 8 : 0) | (dirtFn(c + 1, r) ? 4 : 0) | (dirtFn(c, r + 1) ? 2 : 0) | (dirtFn(c + 1, r + 1) ? 1 : 0);
+              mask.push(m);
+              var fm = 0, img;
+              if (m !== 0 || !darkFn){
+                img = (m === 15) ? dirtTrailImg : tileFor("dirt", m, c, r, salt); // sunlit grass + walnut dirt: trails, plaza, clearings; full-dirt tiles take the packed-earth texture
+              } else {
+                fm = (darkFn(c, r) ? 8 : 0) | (darkFn(c + 1, r) ? 4 : 0) | (darkFn(c, r + 1) ? 2 : 0) | (darkFn(c + 1, r + 1) ? 1 : 0);
+                if (fm === 15){
+                  img = darkFillImgs[Math.floor(darkRng() * darkFillImgs.length)]; // fully dark: one of the 5 dark-grass crops, scattered by the seeded rng
+                } else if (fm !== 0){
+                  img = tileFor("dark", fm, c, r, salt); // dark grass laps in at the map edge
+                } else {
+                  // grass with no dirt and no dark of its own: if the dark band
+                  // laps at the lattice points just beyond this tile, use the
+                  // dark set's grass so the two grass tones meet softly
+                  var deep = false;
+                  for (var dj = -1; dj <= 2 && !deep; dj++)
+                    for (var di = -1; di <= 2; di++)
+                      if (darkFn(c + di, r + dj)){ deep = true; break; }
+                  img = tileFor(deep ? "dark" : "dirt", 0, c, r, salt);
+                }
+              }
+              var flip = (m === 0 || m === 15) && rng() < 0.5; // same seeded draw as always; only corner-uniform tiles are actually flipped
+              if (flip && (m === 15 || fm === 0)){
+                g.save();
+                g.translate(c * 48 + 24, r * 48 + 24); g.scale(-1, 1);
+                g.drawImage(img, -24, -24, 48, 48);
+                g.restore();
+              } else {
+                g.drawImage(img, c * 48, r * 48, 48, 48);
+              }
+              if (m === 0 && rng() < 0.05){ g.fillStyle = "rgba(28,58,18,.18)"; g.fillRect(c * 48, r * 48, 48, 48); }
+            }
+          }
+          // shaded forest edge
+          for (var r2 = 0; r2 < rows; r2++){
+            for (var c2 = 0; c2 < cols; c2++){
+              var ring = Math.min(c2, r2, cols - 1 - c2, rows - 1 - r2);
+              if (ring === 0){ g.fillStyle = "rgba(8,26,6,.38)"; g.fillRect(c2 * 48, r2 * 48, 48, 48); }
+              else if (ring === 1){ g.fillStyle = "rgba(8,26,6,.16)"; g.fillRect(c2 * 48, r2 * 48, 48, 48); }
+            }
+          }
+          return mask;
+        }
+        function drawGrounds(){ // lobby from grass + dark grass; the two side rooms from grass-dirt (dirt clearings, like the plaza)
+          tileMask = paintGround(document.getElementById("ground"), COLS, ROWS, dirtAt, darkBandAt, 0);
+          scatterInto(document.getElementById("decor"), tileMask, COLS, ROWS, 80, 30, 12);
+          var shopMask = paintGround(document.getElementById("groundShop"), SHOP_COLS, SHOP_ROWS, shopDirtAt, null, 101);
+          scatterInto(document.getElementById("decorShop"), shopMask, SHOP_COLS, SHOP_ROWS, 26, 10, 4);
+          var decksMask = paintGround(document.getElementById("groundDecks"), DECKS_COLS, DECKS_ROWS, decksDirtAt, null, 202);
+          scatterInto(document.getElementById("decorDecks"), decksMask, DECKS_COLS, DECKS_ROWS, 26, 10, 4);
+        }
+
+        // ---------- decor ----------
+        function scatterInto(decor, mask, cols, rows, nTuft, nFlower, nShroom){
+          decor.innerHTML = "";
+          var grassTiles = [];
+          for (var r = 1; r < rows - 1; r++)
+            for (var c = 1; c < cols - 1; c++)
+              if (mask[r * cols + c] === 0) grassTiles.push([c, r]);
+          function place(cls, count, html){
+            for (var i = 0; i < count && grassTiles.length; i++){
+              var t = grassTiles[Math.floor(rng() * grassTiles.length)];
+              var d = document.createElement("div");
+              d.className = cls;
+              d.style.left = (t[0] * TILE + 6 + rng() * 32) + "px";
+              d.style.top = (t[1] * TILE + 6 + rng() * 32) + "px";
+              if (html) d.innerHTML = html;
+              decor.appendChild(d);
+            }
+          }
+          place("tuft", nTuft);
+          place("flower", nFlower);
+          place("shroom", nShroom, "<i></i><b></b>");
+        }
+
+        // ---------- dom refs ----------
+        var stage = document.getElementById("stage");
+        var world = document.getElementById("world");
+        var shopWorldEl = document.getElementById("shopWorld");
+        var decksWorldEl = document.getElementById("decksWorld");
+        var fadeVeil = document.getElementById("fadeVeil");
+        function activeWorld(){ return room === "shop" ? shopWorldEl : room === "decks" ? decksWorldEl : world; }
+        var playerEl = document.getElementById("player");
+        var playerCanvas = document.getElementById("playerCanvas");
+        var promptEl = document.getElementById("prompt");
+        var dialogueText = document.getElementById("dialogueText");
+        var dialogueSub = document.getElementById("dialogueSub");
+        var detailEl = document.getElementById("detail");
+        var trailListEl = document.getElementById("trailList");
+        var sfStarsEl = document.getElementById("sfStars");
+        var sfCountEl = document.getElementById("sfCount");
+        var completeBox = document.getElementById("completeBox");
+
+        // ---------- Gentle Forest decor ----------
+        // Sprites from the Gentle Forest pack (assets/decor/), placed by hand
+        // clear of the waystones, the dirt trails and every interaction point.
+        // (x, y) is the sprite's base centre for solids, its centre for the
+        // walkable flower patches. A solid's blocker is only its trunk/base
+        // footprint (fw x fh at the base), never the full canopy.
+        var GF_DECOR = {
+          tree:  { src: "assets/decor/decor-tree-canopy.png",  w: 225, h: 290, fw: 68,  fh: 30 },
+          stump: { src: "assets/decor/decor-stump.png",        w: 44,  h: 96,  fw: 40,  fh: 32 },
+          log:   { src: "assets/decor/decor-log.png",          w: 110, h: 90,  fw: 100, fh: 34 },
+          rocks: { src: "assets/decor/decor-rocks.png",        w: 150, h: 70,  fw: 110, fh: 36 },
+          pink:  { src: "assets/decor/decor-flowers-pink.png", w: 130, h: 28 },
+          blue:  { src: "assets/decor/decor-flowers-blue.png", w: 70,  h: 60 }
+        };
+        var gfSolids = { lobby: [], shop: [], decks: [] }; // { el, base, rect } per room, for collision + depth sort
+        function gfPlace(host, roomName, kind, x, y, solid){
+          var d = GF_DECOR[kind];
+          var im = document.createElement("img");
+          im.src = av(d.src); im.alt = ""; im.setAttribute("aria-hidden", "true");
+          im.className = solid ? "gf-solid" : "gf-flower";
+          im.style.left = x + "px"; im.style.top = y + "px";
+          im.style.width = d.w + "px"; im.style.height = d.h + "px";
+          host.appendChild(im);
+          if (solid) gfSolids[roomName].push({ el: im, base: y, rect: { x0: x - d.fw / 2, x1: x + d.fw / 2, y0: y - d.fh, y1: y } });
+        }
+        // lobby — anchor trees in the four corners, rocks on the outer edges,
+        // stumps + a fallen log by Linkwood's roots (outside his trunk blocker)
+        gfPlace(world, "lobby", "tree", 180, 330, true);
+        gfPlace(world, "lobby", "tree", 2100, 350, true);
+        gfPlace(world, "lobby", "tree", 180, 1400, true);
+        gfPlace(world, "lobby", "tree", 2100, 1400, true);
+        gfPlace(world, "lobby", "rocks", 600, 150, true);
+        gfPlace(world, "lobby", "rocks", 1600, 150, true);
+        gfPlace(world, "lobby", "rocks", 1104, 1500, true);
+        gfPlace(world, "lobby", "stump", 950, 950, true);
+        gfPlace(world, "lobby", "stump", 1260, 950, true);
+        gfPlace(world, "lobby", "log", 1104, 1045, true);
+        // lobby flowers — grass beside the dirt trails, never on the dirt
+        [[1180,1010],[1420,1010],[700,470],[430,580],[1520,385],[1830,270],[1560,880],[1245,1090]].forEach(function(p){ gfPlace(world, "lobby", "pink", p[0], p[1], false); });
+        [[1010,960],[700,1120],[855,520],[1250,560],[1360,760],[430,1130]].forEach(function(p){ gfPlace(world, "lobby", "blue", p[0], p[1], false); });
+        // shop clearing — two trees at the edges, a rock cluster south of the shrine
+        gfPlace(shopWorldEl, "shop", "tree", 130, 110, true);
+        gfPlace(shopWorldEl, "shop", "tree", 1020, 110, true);
+        gfPlace(shopWorldEl, "shop", "rocks", 1000, 600, true);
+        [[70,300],[1080,300],[250,760],[900,770]].forEach(function(p){ gfPlace(shopWorldEl, "shop", "pink", p[0], p[1], false); });
+        // decks clearing — two trees at the edges, a stump east of the library
+        gfPlace(decksWorldEl, "decks", "tree", 130, 110, true);
+        gfPlace(decksWorldEl, "decks", "tree", 1020, 740, true);
+        gfPlace(decksWorldEl, "decks", "stump", 950, 500, true);
+        [[160,680],[880,690],[400,800],[760,800]].forEach(function(p){ gfPlace(decksWorldEl, "decks", "blue", p[0], p[1], false); });
+
+        var collected = {}; // trail id -> true (this session only)
+        var selectedTrail = null;
+
+        // ---------- waystones ----------
+        var stonesEl = document.getElementById("stones");
+        var stoneBtns = {};
+        function makeStone(trail){
+          var b = document.createElement("button");
+          b.type = "button"; b.className = "waystone"; b.id = "stone-" + trail.id;
+          b.style.left = trail.sx + "px"; b.style.top = trail.sy + "px";
+          b.setAttribute("aria-label", trail.name + " trail — " + trail.tag);
+          b.innerHTML =
+            '<span class="gotdot" style="background:' + trail.color + '">★</span>' +
+            '<img src="' + av("assets/waystone-" + trail.id + ".png") + '" alt="">' +
+            '<span class="wlabel pixel">' + trail.name.toUpperCase() + '</span>';
+          b.addEventListener("click", function(ev){
+            ev.stopPropagation();
+            walkTo(trail.sx, trail.sy + 48);
+            selectTrail(trail.id, true);
+          });
+          stonesEl.appendChild(b);
+          stoneBtns[trail.id] = b;
+        }
+        TRAILS.forEach(makeStone);
+
+        // ---------- HUD ----------
+        function renderHUD(){
+          sfStarsEl.innerHTML = "";
+          var n = 0;
+          TRAILS.forEach(function(t){
+            var s = document.createElement("span");
+            s.className = "sf-star" + (collected[t.id] ? " got" : "");
+            s.textContent = "★";
+            if (collected[t.id]) { s.style.background = t.color; n++; }
+            s.title = t.name + (collected[t.id] ? " — spark gathered" : " — not yet");
+            sfStarsEl.appendChild(s);
+          });
+          sfCountEl.textContent = n + " / 5";
+          completeBox.classList.toggle("show", n === 5);
+        }
+
+        // ---------- side list + detail ----------
+        function renderList(){
+          trailListEl.innerHTML = "";
+          TRAILS.forEach(function(t){
+            var row = document.createElement("button");
+            row.type = "button";
+            row.className = "trail-row" + (selectedTrail === t.id ? " selected" : "");
+            row.innerHTML =
+              '<span class="chip" style="background:linear-gradient(180deg,' + t.color + '59,' + t.color + '26)"><img src="' + av("assets/waystone-" + t.id + ".png") + '" alt=""></span>' +
+              '<span><h3>' + t.name + ' → ' + t.endpoint + '</h3><p>' + t.tag + '</p></span>' +
+              '<span class="status" style="color:' + (collected[t.id] ? t.dark : "inherit") + '">' +
+              (collected[t.id] ? "★ GOT" : "WALK →") + '</span>';
+            row.addEventListener("click", function(){
+              if (room === "lobby") walkTo(t.sx, t.sy + 48);
+              else if (t.id === "shop" && room === "shop") walkTo(SHOP_DOOR.x, SHOP_DOOR.y); // already through the trail — just head for the door
+              else if (t.id === "decks" && room === "decks") walkTo(DECKS_DOOR.x, DECKS_DOOR.y); // already through the trail — just head for the door
+              else { pendingLobbyWalk = { x: t.sx, y: t.sy + 48 }; startTransition("lobby"); } // fade back out, then walk up that trail
+              selectTrail(t.id, true);
+            });
+            trailListEl.appendChild(row);
+          });
+        }
+        function selectTrail(id, scroll){
+          selectedTrail = id;
+          var t = null;
+          TRAILS.forEach(function(x){ if (x.id === id) t = x; });
+          if (!t) { detailEl.className = "detail"; detailEl.innerHTML = ""; renderList(); return; }
+          var destHtml = t.dests.map(function(d){
+            if (d.href) return '<a class="dest" href="' + d.href + '" target="_blank" rel="noopener">' + d.label + ' ↗</a>';
+            return '<span class="dest">' + d.label + '</span>';
+          }).join("");
+          detailEl.className = "detail open";
+          detailEl.innerHTML =
+            '<div class="endpoint" style="border-color:' + t.color + '">' +
+              '<h3><span style="color:' + t.dark + '">' + t.rune + '</span> ' + t.name + ' Trail — ' + t.endpoint + '</h3>' +
+              '<p>' + t.blurb + '</p>' +
+              '<div class="dest-list">' + destHtml + '</div>' +
+              '<div class="reward"><span class="swatch" style="background:linear-gradient(135deg,' + t.color + ',' + t.dark + ')"></span>' +
+              '<span><b>Trail reward:</b> ' + t.reward + '<br><span class="fine">' + t.rewardNote + '</span></span></div>' +
+              (collected[t.id]
+                ? '<p class="fine">★ Spark gathered — Linkwood felt this one land. Walk the trail again any time; the road stays open.</p>'
+                : (t.id === "shop"
+                  ? '<button class="btn" type="button" id="collectBtn">Walk to the woodshop</button><p class="fine" style="margin-top:8px">The Shop spark waits at the old shrine in the woodshop clearing, up the trail past the waystone — the bear and the bee can tell you more.</p>'
+                  : t.id === "decks"
+                  ? '<button class="btn" type="button" id="collectBtn">Walk to the library</button><p class="fine" style="margin-top:8px">The library stands in its own clearing, up the trail past the waystone — the sloth librarian keeps Grizzly&rsquo;s decks on its shelves.</p>'
+                  : '<button class="btn" type="button" id="collectBtn">Walk this trail · gather the ' + t.name + ' spark ★</button>')) +
+            '</div>';
+          var cb = document.getElementById("collectBtn");
+          if (cb) cb.addEventListener("click", function(){
+            if (t.id === "shop") { // the shrine grants this spark, not the panel — the button walks her there
+              if (room === "shop") walkTo(SHOP_DOOR.x, SHOP_DOOR.y);
+              else if (room === "decks") { pendingDoor = true; pendingLobbyWalk = { x: shopTrailRef.sx, y: shopTrailRef.sy + 48 }; startTransition("lobby"); }
+              else { pendingDoor = true; walkTo(shopTrailRef.sx + 42, shopTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
+            }
+            else if (t.id === "decks") { // no spark here yet — the button just walks her to the library
+              if (room === "decks") walkTo(DECKS_DOOR.x, DECKS_DOOR.y);
+              else if (room === "shop") { pendingLibrary = true; pendingLobbyWalk = { x: decksTrailRef.sx, y: decksTrailRef.sy + 48 }; startTransition("lobby"); }
+              else { pendingLibrary = true; walkTo(decksTrailRef.sx + 42, decksTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
+            }
+            else collect(t);
+          });
+          renderList();
+          if (scroll && window.innerWidth <= 900) {
+            detailEl.scrollIntoView({ behavior:"smooth", block:"nearest" });
+          }
+        }
+        function collect(t){
+          if (collected[t.id]) return;
+          collected[t.id] = true;
+          var n = Object.keys(collected).length;
+          renderHUD(); renderList(); selectTrail(t.id, false); refreshStones();
+          if (n === 5) {
+            say("Five sparks… all five. Stand still, little one — the grove is weaving starlight into your cloak. The Starforged cloak is yours.", "★ StarForce complete — midnight blue, with tiny star-points.");
+          } else {
+            say("Ah… there it is. The " + t.name + " spark, home at last. " + n + " of five, little one.", t.reward + " earned on the " + t.name + " trail.");
+          }
+        }
+        function refreshStones(){
+          TRAILS.forEach(function(t){
+            stoneBtns[t.id].classList.toggle("got", !!collected[t.id]);
+          });
+        }
+
+        // ---------- dialogue ----------
+        var WHO_LINKWOOD = { name: "GRANDFATHER LINKWOOD", img: "assets/tree.png", npc: false };
+        var WHO_BEAR = { name: "BEAR · WOODWORKER", img: "assets/bear-woodworker-96.png", npc: true };
+        var WHO_BEE = { name: "BEE · DESIGNER", img: "assets/bee-designer-96.png", npc: true };
+        var WHO_TEMPLE = { name: "THE OLD SHRINE", img: "assets/temple-shop-192.png", npc: true };
+        var WHO_SLOTH = { name: "SLOTH · LIBRARIAN", img: "assets/sloth-librarian-96.png", npc: true };
+        var dialogueName = document.getElementById("dialogueName");
+        var dialogueAvatar = document.getElementById("dialogueAvatar");
+        var dialogueAvatarImg = document.getElementById("dialogueAvatarImg");
+        function say(text, sub, who){
+          who = who || WHO_LINKWOOD;
+          dialogueText.textContent = text;
+          dialogueName.textContent = who.name;
+          var da = document.getElementById("dialogueActions"); // link choices belong to whoever just spoke — clear them
+          da.hidden = true; da.innerHTML = "";
+          if (dialogueAvatarImg.getAttribute("src") !== av(who.img)) dialogueAvatarImg.src = av(who.img);
+          dialogueAvatar.classList.toggle("whoface", !!who.npc); // not "npc" — that class is the world-NPC button style
+          if (sub) dialogueSub.textContent = sub;
+        }
+        var lineIdx = 0;
+        function progressLine(){
+          var n = Object.keys(collected).length;
+          if (n === 5) return "Five sparks, and a cloak full of stars. Walk tall, little one — every road here knows your feet now.";
+          if (n > 0) return n + (n === 1 ? " of five" : " of five") + ", little one. My roots hum a little brighter. The grove remembers.";
+          return LINKWOOD_LINES[lineIdx % LINKWOOD_LINES.length];
+        }
+        document.getElementById("treeWrap").addEventListener("click", function(ev){
+          ev.stopPropagation();
+          lineIdx++;
+          say(progressLine(), "Grandfather Linkwood — quest-giver, progress-keeper, oldest friend in the grove.");
+        });
+
+        // ---------- shop clearing: toast, satchel, NPCs, shrine ----------
+        var toastEl = document.getElementById("toast");
+        var toastTimer = null;
+        function showToast(text){
+          toastEl.textContent = text;
+          toastEl.hidden = false;
+          if (toastTimer) clearTimeout(toastTimer);
+          toastTimer = setTimeout(function(){ toastEl.hidden = true; }, 3400);
+        }
+        function renderSatchel(){
+          var list = document.getElementById("satchelList");
+          var items = "";
+          if (cosmetics.charm) items +=
+            '<div class="satchel-item"><span class="token-swatch" aria-hidden="true"></span>' +
+            '<span><b>Carved Token Charm</b><br><span class="fine">A wooden token on a cord, carved by the bear.</span></span></div>';
+          if (cosmetics.spellbook) items +=
+            '<div class="satchel-item"><span class="book-swatch" aria-hidden="true"></span>' +
+            '<span><b>Librarian\'s Spellbook</b><br><span class="fine">A spellbook for the hand, from the Sylvan Library.</span></span></div>';
+          if (cosmetics.moxjewel) items +=
+            '<div class="satchel-item"><span class="jewel-swatch" aria-hidden="true"></span>' +
+            '<span><b>Mox Jewel</b><br><span class="fine">A mox jewel for the staff, from Moxfield.</span></span></div>';
+          list.innerHTML = items || '<p class="fine">Empty for now — trail folk give gifts to druids who come visiting.</p>';
+        }
+        function talkBear(){
+          if (!cosmetics.charm) {
+            cosmetics.charm = true; // granted once — later talks use the other line
+            renderSatchel();
+            showToast("Bear gave you a Carved Token Charm!");
+            say("Welcome to the woodshop! The online store isn't open yet — but take this. I carved it from Linkwood's fallen branches.", "Bear presses a carved wooden token into your hand — it's in your satchel now.", WHO_BEAR);
+          } else {
+            say("That charm'll bring you luck. Check back when the shop opens!", "Bear — woodworker of the grove. The online store opens later.", WHO_BEAR);
+          }
+        }
+        function talkBee(){
+          say("Oh! You're the druid! I'm designing the new line — wooden tokens, charms, all hand-finished. My Etsy counter opens soon!", "Bee — designer at the token counter, spool of gold thread always in hand.", WHO_BEE);
+        }
+        function showDecksChoices(){
+          var da = document.getElementById("dialogueActions");
+          da.innerHTML = "";
+          function mkChoice(label, href, cosmetic, toastText){
+            var b = document.createElement("button");
+            b.type = "button"; b.className = "btn";
+            b.textContent = label + " ↗";
+            b.addEventListener("click", function(){
+              window.open(href, "_blank", "noopener");
+              if (!cosmetics[cosmetic]) { // each gift is given once — the shelves stay open either way
+                cosmetics[cosmetic] = true;
+                renderSatchel();
+                showToast(toastText);
+              }
+            });
+            da.appendChild(b);
+          }
+          mkChoice("Sylvan Library", "https://sylvan-library.vercel.app", "spellbook", "The sloth gave you a Librarian's Spellbook!");
+          mkChoice("Moxfield", "https://moxfield.com/users/GrizzlyDann", "moxjewel", "The sloth gave you a Mox Jewel!");
+          da.hidden = false;
+        }
+        function talkSloth(){
+          var first = !slothMet;
+          slothMet = true;
+          say(first
+            ? "Welcome to the Sylvan Library... I know where every card is. Grizzly's decks are shelved here — in the Sylvan Library app, and on his Moxfield. Take a look."
+            : "Back for more cards? The shelves are always open.",
+            "Sloth — librarian of the Sylvan Library. Slow paws, perfect memory.", WHO_SLOTH);
+          showDecksChoices();
+        }
+        function visitTemple(){
+          if (collected.shop) {
+            say("The shrine is quiet. The gold spark is yours.", "The old shrine — its gold star now burns in your StarForce.", WHO_TEMPLE);
+            return;
+          }
+          if (!templeArmed) {
+            templeArmed = true; // first visit describes it; the next gathers
+            say("An old shrine. A gold star waits on the pedestal.", "Press E again — or tap the shrine — to gather the gold spark.", WHO_TEMPLE);
+            return;
+          }
+          templeArmed = false;
+          document.getElementById("templeSpark").style.display = "none"; // the star leaves the pedestal
+          var shopTrail = null;
+          TRAILS.forEach(function(t){ if (t.id === "shop") shopTrail = t; });
+          collect(shopTrail); // HUD star, waystone badge and 5/5 logic all run through here
+        }
+        var bearEl = document.getElementById("bearEl");
+        var beeEl = document.getElementById("beeEl");
+        var slothEl = document.getElementById("slothEl");
+        bearEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkBear(); });
+        beeEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkBee(); });
+        slothEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkSloth(); });
+        document.getElementById("libraryEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(DECKS_DOOR.x, DECKS_DOOR.y); });
+        document.getElementById("templeEl").addEventListener("click", function(ev){ ev.stopPropagation(); visitTemple(); });
+        document.getElementById("woodshopEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(SHOP_DOOR.x, SHOP_DOOR.y); });
+        var SITES = [
+          { id: "bear", x: 292, y: 376, range: 112, label: "Talk to the bear", run: talkBear },
+          { id: "bee", x: 492, y: 376, range: 112, label: "Talk to the bee", run: talkBee },
+          { id: "temple", x: TEMPLE.x, y: TEMPLE.y, range: 118, label: "Visit the old shrine", run: visitTemple }
+        ];
+        var DECKS_SITES = [
+          { id: "sloth", x: SLOTH.x, y: SLOTH.y, range: 112, label: "Talk to the sloth librarian", run: talkSloth }
+        ];
+        function nearestSite(){
+          var sites = room === "shop" ? SITES : room === "decks" ? DECKS_SITES : null; // each screen has its own folk
+          if (!sites) return { site: null, dist: 1e9 };
+          var best = null, bestD = 1e9;
+          sites.forEach(function(s){
+            var d = Math.sqrt(Math.pow(pos.x - s.x, 2) + Math.pow(pos.y - s.y, 2));
+            if (d < s.range && d < bestD) { bestD = d; best = s; }
+          });
+          return { site: best, dist: bestD };
+        }
+
+        // ---------- player movement, camera, animation ----------
+        var DIRS = ["east","south-east","south","south-west","west","north-west","north","north-east"];
+        var pos = { x: SPAWN.x, y: SPAWN.y };
+        var target = null;
+        var keys = {};
+        var facing = "south";
+        var walkTime = 0;
+        // Walk frames live under versioned FILENAMES (walk2-*): browsers that
+        // cached the old (closed-eye) frames under the bare names refetch the
+        // fixed art. Do NOT switch this back to ?v= query strings — the
+        // published asset host does not serve query-stringed asset URLs, so
+        // every frame 404'd and she rendered as a broken image.
+        function walkSrc(dir, frame){ return "assets/walk2-" + dir + "-" + frame + ".png"; }
+        // Frame swaps must never assign a DOM img's src. The published-page
+        // runtime serves local assets by first blanking the img to a 1x1
+        // transparent pixel, then asynchronously resolving the real blob URL
+        // into it — so every src swap flashed her invisible for at least a
+        // frame, ~10 times a second at stride rate. Pre-decoding cannot fix
+        // that (the blank is written before the new URL lands, and the old
+        // preload Images were never retained, so their decodes were dropped).
+        // Instead she is painted on a canvas from the preloaded frames:
+        // drawImage of a loaded frame is synchronous and atomic, and if the
+        // next frame is not loaded yet the canvas keeps showing the previous
+        // one. It never paints blank.
+        var frameImgs = {}; // dir -> [Image x9], kept alive so decodes stay cached
+        var curDir = "south", curFrame = 0, drawnKey = "";
+        var playerCtx = playerCanvas.getContext("2d");
+        function drawSprite(){
+          var key = curDir + ":" + curFrame;
+          if (key === drawnKey) return;
+          var im = frameImgs[curDir] && frameImgs[curDir][curFrame];
+          if (!im || !im.complete || !im.naturalWidth) return; // keep last frame on the canvas
+          playerCtx.clearRect(0, 0, playerCanvas.width, playerCanvas.height);
+          playerCtx.drawImage(im, 0, 0);
+          drawnKey = key;
+        }
+        DIRS.forEach(function(d){
+          frameImgs[d] = [];
+          for (var i = 0; i <= 8; i++){
+            (function(dir, frame){
+              var im = new Image();
+              im.onload = function(){
+                if (im.decode) im.decode().catch(function(){});
+                drawSprite(); // paints at once if this is the frame on stage
+              };
+              im.src = av(walkSrc(dir, frame));
+              frameImgs[dir][frame] = im;
+            })(d, i);
+          }
+        });
+        function setSprite(dir, frame){
+          if (dir === curDir && frame === curFrame) return;
+          curDir = dir; curFrame = frame;
+          drawSprite();
+        }
+        drawSprite();
+        function dirFromVector(dx, dy){
+          var deg = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (deg < 0) deg += 360;
+          return DIRS[Math.round(deg / 45) % 8];
+        }
+        function blockRect(b){
+          // push the player out of a footprint rect along its shallowest edge
+          var r = 14;
+          if (pos.x > b.x0 - r && pos.x < b.x1 + r && pos.y > b.y0 - r && pos.y < b.y1 + r) {
+            var pens = [
+              { d: pos.x - (b.x0 - r), axis: "x", v: b.x0 - r },
+              { d: (b.x1 + r) - pos.x, axis: "x", v: b.x1 + r },
+              { d: pos.y - (b.y0 - r), axis: "y", v: b.y0 - r },
+              { d: (b.y1 + r) - pos.y, axis: "y", v: b.y1 + r }
+            ];
+            pens.sort(function(p, q){ return p.d - q.d; });
+            if (pens[0].axis === "x") pos.x = pens[0].v; else pos.y = pens[0].v;
+          }
+        }
+        function clampPos(){
+          var RW = room === "lobby" ? WORLD_W : SHOP_W; // both side screens share the shop room's size
+          var RH = room === "lobby" ? WORLD_H : SHOP_H;
+          pos.x = Math.max(36, Math.min(RW - 36, pos.x));
+          pos.y = Math.max(48, Math.min(RH - 26, pos.y));
+          if (room === "shop") {
+            // woodshop + shrine footprints, and the NPCs' own space
+            blockRect(SHOPBUILD);
+            blockRect(TEMPLE);
+            gfSolids.shop.forEach(function(s){ blockRect(s.rect); }); // Gentle Forest trees + rocks
+            SITES.forEach(function(s){
+              if (s.id === "temple") return; // the shrine's rect already covers it
+              var nx = pos.x - s.x, ny = pos.y - s.y;
+              var nd = Math.sqrt(nx*nx + ny*ny);
+              if (nd < 30 && nd > 0.01) {
+                pos.x = s.x + (nx / nd) * 30;
+                pos.y = s.y + (ny / nd) * 30;
+              }
+            });
+            return;
+          }
+          if (room === "decks") {
+            // library footprint, and the librarian's own space
+            blockRect(LIBBUILD);
+            gfSolids.decks.forEach(function(s){ blockRect(s.rect); }); // Gentle Forest trees + stump
+            var lx = pos.x - SLOTH.x, ly = pos.y - SLOTH.y;
+            var ld = Math.sqrt(lx*lx + ly*ly);
+            if (ld < 30 && ld > 0.01) {
+              pos.x = SLOTH.x + (lx / ld) * 30;
+              pos.y = SLOTH.y + (ly / ld) * 30;
+            }
+            return;
+          }
+          // keep out of Linkwood's trunk
+          var dx = pos.x - TRUNK.x, dy = pos.y - TRUNK.y;
+          var dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < TRUNK.r && dist > 0.01) {
+            pos.x = TRUNK.x + (dx / dist) * TRUNK.r;
+            pos.y = TRUNK.y + (dy / dist) * TRUNK.r;
+          }
+          // and out of the waystones themselves
+          TRAILS.forEach(function(t){
+            var sx = pos.x - t.sx, sy = pos.y - (t.sy - 4);
+            var d = Math.sqrt(sx*sx + sy*sy);
+            if (d < 30 && d > 0.01) {
+              pos.x = t.sx + (sx / d) * 30;
+              pos.y = (t.sy - 4) + (sy / d) * 30;
+            }
+          });
+          // and out of the Gentle Forest trees, stumps, log and rock clusters
+          gfSolids.lobby.forEach(function(s){ blockRect(s.rect); });
+        }
+        function nearestTrail(){
+          if (room !== "lobby") return { trail: null, dist: 1e9 }; // the waystones stand in the lobby
+          var best = null, bestD = 1e9;
+          TRAILS.forEach(function(t){
+            var d = Math.sqrt(Math.pow(pos.x - t.sx, 2) + Math.pow(pos.y - t.sy, 2));
+            if (d < bestD) { bestD = d; best = t; }
+          });
+          return { trail: best, dist: bestD };
+        }
+        function treeDist(){
+          if (room !== "lobby") return 1e9; // Linkwood stands in the lobby
+          return Math.sqrt(Math.pow(pos.x - TRUNK.x, 2) + Math.pow(pos.y - TRUNK.y, 2));
+        }
+
+        var cam = null; // snapped to player on first frame
+        var bobY = 0, swayDeg = 0; // procedural walk bounce/sway, set by the game loop
+        var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        var viewW = 0, viewH = 0;
+        function measure(){
+          viewW = stage.clientWidth; viewH = stage.clientHeight;
+        }
+        window.addEventListener("resize", measure);
+        measure();
+
+        function renderPlayer(){
+          playerEl.style.left = pos.x + "px";
+          playerEl.style.top = (pos.y + bobY) + "px";
+          playerCanvas.style.transform = swayDeg ? "rotate(" + swayDeg.toFixed(2) + "deg)" : "";
+          var pz = 8;
+          if (room === "lobby") {
+            if (pos.y < TRUNK.y - 30) pz = 3; // duck behind the canopy, stand in front of the roots
+          } else if (room === "shop") {
+            var behindSite = (pos.x > 150 && pos.x < 594 && pos.y < SHOPBUILD.y1 - 24) ||
+              (pos.x > 710 && pos.x < 1010 && pos.y < TEMPLE.y1 - 24) ||
+              SITES.some(function(s){ return Math.abs(pos.x - s.x) < 76 && pos.y < s.y - 12; });
+            if (behindSite) pz = 6; // behind the woodshop, the shrine, or an NPC
+          } else {
+            var behindLib = (pos.x > 290 && pos.x < 862 && pos.y < LIBBUILD.y1 - 24) ||
+              (Math.abs(pos.x - SLOTH.x) < 76 && pos.y < SLOTH.y - 12);
+            if (behindLib) pz = 6; // behind the library or the librarian
+          }
+          playerEl.style.zIndex = pz;
+          // Gentle Forest solids depth-sort against her: a piece whose base
+          // sits above her feet goes behind her (7), one below goes in front (9)
+          var gfRoom = gfSolids[room];
+          for (var gi = 0; gi < gfRoom.length; gi++) {
+            gfRoom[gi].el.style.zIndex = gfRoom[gi].base < pos.y ? 7 : 9;
+          }
+          var near = nearestTrail();
+          TRAILS.forEach(function(t){
+            stoneBtns[t.id].classList.toggle("near", near.trail && near.trail.id === t.id && near.dist < 105);
+          });
+          var ns = nearestSite();
+          bearEl.classList.toggle("near", !!(ns.site && ns.site.id === "bear"));
+          beeEl.classList.toggle("near", !!(ns.site && ns.site.id === "bee"));
+          slothEl.classList.toggle("near", !!(ns.site && ns.site.id === "sloth"));
+          // (the shrine stays "described" until the spark is gathered or the grove resets — no walk-away disarm: temple clicks work from anywhere, like Linkwood's)
+          var dt = treeDist();
+          var promptText = null;
+          if (ns.site && ns.dist <= (near.trail && near.dist < 105 ? near.dist : 1e9) && ns.dist <= dt) {
+            promptText = (ns.site.id === "temple" && templeArmed ? "Gather the gold spark" : ns.site.label) + " — E";
+          } else if (near.trail && near.dist < 105) {
+            promptText = (collected[near.trail.id] ? "Revisit the " : "Visit the ") + near.trail.name + " trail — E";
+          } else if (dt < 170) {
+            promptText = "Talk to Linkwood — E";
+          }
+          if (promptText) {
+            promptEl.hidden = false;
+            promptEl.style.left = pos.x + "px";
+            promptEl.style.top = (pos.y - 128) + "px";
+            promptEl.textContent = promptText;
+          } else promptEl.hidden = true;
+          // camera follows, clamped to the current room; a room smaller than
+          // the view (the shop screen at full zoom-out) is centered instead
+          var visW = viewW / zoom, visH = viewH / zoom;
+          var RW = room === "lobby" ? WORLD_W : SHOP_W;
+          var RH = room === "lobby" ? WORLD_H : SHOP_H;
+          var tx = visW >= RW ? (RW - visW) / 2 : Math.max(0, Math.min(RW - visW, pos.x - visW / 2));
+          var ty = visH >= RH ? (RH - visH) / 2 : Math.max(0, Math.min(RH - visH, pos.y - visH / 2));
+          if (!cam) cam = { x: tx, y: ty };
+          cam.x += (tx - cam.x) * 0.12;
+          cam.y += (ty - cam.y) * 0.12;
+          if (Math.abs(tx - cam.x) < 0.4) cam.x = tx;
+          if (Math.abs(ty - cam.y) < 0.4) cam.y = ty;
+          activeWorld().style.transform = "translate(" + (-cam.x * zoom) + "px," + (-cam.y * zoom) + "px) scale(" + zoom + ")";
+        }
+        function interact(){
+          var near = nearestTrail();
+          var dt = treeDist();
+          var ns = nearestSite();
+          if (ns.site && ns.dist <= (near.trail && near.dist < 105 ? near.dist : 1e9) && ns.dist <= dt) {
+            ns.site.run();
+          } else if (near.trail && near.dist < 105 && near.dist <= dt) {
+            selectTrail(near.trail.id, true);
+            var t = near.trail;
+            say(collected[t.id]
+              ? "Back on the " + t.name + " road. It remembers you — roads do that."
+              : "The " + t.name + " waystone hums. " + t.tag + ". Its end is the " + t.endpoint + ".",
+              "Use the panel to walk the trail and gather its spark.");
+          } else if (dt < 170) {
+            lineIdx++;
+            say(progressLine(), "Grandfather Linkwood — quest-giver, progress-keeper, oldest friend in the grove.");
+          }
+        }
+        function walkTo(x, y){ target = { x: x, y: y }; }
+
+        // ---------- room transitions (lobby <-> shop screen) ----------
+        var transitioning = false;
+        function startTransition(dest){
+          if (transitioning || room === dest) return;
+          transitioning = true;
+          target = null;
+          keys = {}; // a held key shouldn't carry her across the fade
+          fadeVeil.classList.add("on");
+          var wait = reduceMotion ? 40 : 300;
+          setTimeout(function(){
+            enterRoom(dest);
+            fadeVeil.classList.remove("on");
+            setTimeout(function(){ transitioning = false; }, wait);
+          }, wait);
+        }
+        function enterRoom(dest){
+          var fromRoom = room; // returning to the lobby lands at the waystone of the trail she came from
+          room = dest;
+          world.style.display = dest === "lobby" ? "" : "none";
+          shopWorldEl.style.display = dest === "shop" ? "block" : "none";
+          decksWorldEl.style.display = dest === "decks" ? "block" : "none";
+          var host = activeWorld();
+          host.appendChild(playerEl); // she (and her prompt bubble) live on whichever screen is showing
+          host.appendChild(promptEl);
+          promptEl.hidden = true;
+          target = null;
+          // A panel-sent walk out of a room heads for another waystone, often in a
+          // straight line back past the stone she just left — keep that gate shut
+          // until the walk ends or she takes the reins herself, or she bounces
+          // straight back through it. A plain walk-off-the-edge return sets no
+          // pending walk, so approaching the stone still enters, as always.
+          gateMute = (dest === "lobby" && pendingLobbyWalk) ? fromRoom : null;
+          if (dest === "shop") {
+            pos = { x: SHOP_ENTRY.x, y: SHOP_ENTRY.y };
+            facing = "north"; // just walked in off the bottom edge
+          } else if (dest === "decks") {
+            pos = { x: DECKS_ENTRY.x, y: DECKS_ENTRY.y };
+            facing = "north"; // just walked in off the bottom edge
+          } else {
+            var homeStone = fromRoom === "decks" ? decksTrailRef : shopTrailRef;
+            pos = { x: homeStone.sx, y: homeStone.sy + 96 }; // back in the lobby, at that trail's waystone
+            facing = "north";
+          }
+          setSprite(facing, 0);
+          cam = null; // snap the camera to the new room
+          if (dest === "shop" && pendingDoor) { pendingDoor = false; walkTo(SHOP_DOOR.x, SHOP_DOOR.y); }
+          if (dest === "decks" && pendingLibrary) { pendingLibrary = false; walkTo(DECKS_DOOR.x, DECKS_DOOR.y); }
+          if (dest === "lobby" && pendingLobbyWalk) { var pw = pendingLobbyWalk; pendingLobbyWalk = null; walkTo(pw.x, pw.y); }
+          renderPlayer();
+        }
+
+        var last = performance.now();
+        function loop(now){
+          var dt = Math.min(0.05, (now - last) / 1000); last = now;
+          var dx = 0, dy = 0;
+          if (!transitioning) {
+            if (keys.up) dy -= 1; if (keys.down) dy += 1;
+            if (keys.left) dx -= 1; if (keys.right) dx += 1;
+          }
+          var moving = false;
+          var speed = 215;
+          var prevX = pos.x, prevY = pos.y; // for facing along actual travel
+          if (dx !== 0 || dy !== 0) {
+            target = null;
+            gateMute = null; // she's driving herself now — every gate is live again
+            var len = Math.sqrt(dx*dx + dy*dy); dx /= len; dy /= len;
+            pos.x += dx * speed * dt; pos.y += dy * speed * dt;
+            facing = dirFromVector(dx, dy); moving = true;
+          } else if (target && !transitioning) {
+            var tx = target.x - pos.x, ty = target.y - pos.y;
+            var dist = Math.sqrt(tx*tx + ty*ty);
+            if (dist < 3) { target = null; if (!pendingLobbyWalk) gateMute = null; } // panel walk done — gates live again
+            else {
+              var step = Math.min(speed * dt, dist);
+              pos.x += (tx / dist) * step; pos.y += (ty / dist) * step;
+              facing = dirFromVector(tx, ty); moving = true;
+            }
+          }
+          clampPos();
+          // room gates: up the Shop trail past its waystone fades to the shop
+          // screen; off the shop screen's bottom edge fades back to the lobby
+          if (!transitioning) {
+            if (room === "lobby") {
+              if (gateMute !== "shop") {
+                var gdx = pos.x - shopTrailRef.sx, gdy = pos.y - shopTrailRef.sy;
+                if (gdx * gdx + gdy * gdy < 62 * 62) startTransition("shop");
+              }
+              if (gateMute !== "decks") {
+                var ddx = pos.x - decksTrailRef.sx, ddy = pos.y - decksTrailRef.sy;
+                if (ddx * ddx + ddy * ddy < 62 * 62) startTransition("decks");
+              }
+            } else if (room === "shop" && pos.y > SHOP_H - 34) {
+              startTransition("lobby");
+            } else if (room === "decks" && pos.y > DECKS_H - 34) {
+              startTransition("lobby");
+            }
+          }
+          // Face the way she actually travelled. The trunk, waystones and world
+          // edges push her out sideways, so intended direction != real motion
+          // there — without this she slides along obstacles facing into them.
+          if (moving) {
+            var adx = pos.x - prevX, ady = pos.y - prevY;
+            if (adx * adx + ady * ady > 0.04) facing = dirFromVector(adx, ady);
+            walkTime += dt;
+            setSprite(facing, 1 + (Math.floor(walkTime / 0.105) % 8));
+            // The walk frames themselves carry only a few px of boot shuffle in a
+            // 256px canvas — invisible at sprite size — so the stride is carried
+            // by a bob + sway synced to the cycle (two footfalls per 8 frames).
+            if (reduceMotion) { bobY = 0; swayDeg = 0; }
+            else {
+              var ph = (walkTime % 0.84) / 0.84;
+              bobY = -Math.abs(Math.sin(ph * Math.PI * 2)) * 6;
+              swayDeg = Math.sin(ph * Math.PI * 2) * 2.4;
+            }
+          } else {
+            walkTime = 0; bobY = 0; swayDeg = 0;
+            setSprite(facing, 0);
+          }
+          renderPlayer();
+          requestAnimationFrame(loop);
+        }
+        // ---------- camera zoom ----------
+        var ZOOM_MIN = 0.4, ZOOM_MAX = 1.0;
+        var zoom = 0.4; // opens fully zoomed out on every device — the whole grove visible for exploring; zoom in with + / pinch / Ctrl+scroll for the close-up view
+        function setZoom(z){ zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)); }
+        function zoomBy(f){ setZoom(zoom * f); }
+        var zoomInBtn = document.getElementById("zoomIn");
+        var zoomOutBtn = document.getElementById("zoomOut");
+        zoomInBtn.addEventListener("click", function(){ zoomBy(1.25); });
+        zoomOutBtn.addEventListener("click", function(){ zoomBy(1 / 1.25); });
+        [zoomInBtn, zoomOutBtn].forEach(function(b){
+          b.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
+        });
+        stage.addEventListener("wheel", function(ev){
+          if (!ev.ctrlKey) return;
+          ev.preventDefault();
+          setZoom(zoom * (ev.deltaY < 0 ? 1.12 : 1 / 1.12));
+        }, { passive: false });
+
+        // pinch-to-zoom: two active pointers stretch / squeeze the camera
+        var pinchPointers = {};
+        var pinchStartDist = 0, pinchStartZoom = 1;
+        function pinchDist(){
+          var pts = Object.keys(pinchPointers).map(function(k){ return pinchPointers[k]; });
+          if (pts.length < 2) return 0;
+          var dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+        stage.addEventListener("pointerdown", function(ev){
+          pinchPointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+          if (Object.keys(pinchPointers).length === 2) {
+            target = null; // two fingers down means zooming, not walking
+            pinchStartDist = pinchDist();
+            pinchStartZoom = zoom;
+          }
+        });
+        stage.addEventListener("pointermove", function(ev){
+          if (!pinchPointers[ev.pointerId]) return;
+          pinchPointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+          if (Object.keys(pinchPointers).length === 2 && pinchStartDist > 0) {
+            target = null;
+            setZoom(pinchStartZoom * (pinchDist() / pinchStartDist));
+          }
+        });
+        function pinchEnd(ev){
+          delete pinchPointers[ev.pointerId];
+          if (Object.keys(pinchPointers).length < 2) pinchStartDist = 0;
+        }
+        stage.addEventListener("pointerup", pinchEnd);
+        stage.addEventListener("pointercancel", pinchEnd);
+
+        function stagePoint(ev){
+          var r = stage.getBoundingClientRect();
+          var cx = (ev.touches ? ev.touches[0].clientX : ev.clientX);
+          var cy = (ev.touches ? ev.touches[0].clientY : ev.clientY);
+          return { x: (cx - r.left) / zoom + (cam ? cam.x : 0), y: (cy - r.top) / zoom + (cam ? cam.y : 0) };
+        }
+        stage.addEventListener("pointerdown", function(ev){
+          if (ev.target.closest(".waystone") || ev.target.closest("#treeWrap") || ev.target.closest(".zoomctl") || ev.target.closest(".npc") || ev.target.closest(".site")) return;
+          if (Object.keys(pinchPointers).length > 1) return;
+          var p = stagePoint(ev); walkTo(p.x, p.y);
+        });
+
+        var KEYMAP = { ArrowUp:"up", KeyW:"up", ArrowDown:"down", KeyS:"down", ArrowLeft:"left", KeyA:"left", ArrowRight:"right", KeyD:"right" };
+        window.addEventListener("keydown", function(ev){
+          if (KEYMAP[ev.code]) { keys[KEYMAP[ev.code]] = true; ev.preventDefault(); }
+          if (ev.key === "+" || ev.key === "=") { ev.preventDefault(); zoomBy(1.2); }
+          else if (ev.key === "-" || ev.key === "_") { ev.preventDefault(); zoomBy(1 / 1.2); }
+          if (ev.code === "KeyE" || ev.code === "Space") {
+            if (document.activeElement && (document.activeElement.tagName === "BUTTON" || document.activeElement.tagName === "A") && ev.code === "Space") return;
+            ev.preventDefault(); interact();
+          }
+        });
+        window.addEventListener("keyup", function(ev){ if (KEYMAP[ev.code]) keys[KEYMAP[ev.code]] = false; });
+
+        // touch D-pad
+        document.querySelectorAll("[data-dir]").forEach(function(btn){
+          var dir = btn.getAttribute("data-dir");
+          function on(ev){ ev.preventDefault(); keys[dir] = true; }
+          function off(ev){ ev.preventDefault(); keys[dir] = false; }
+          btn.addEventListener("pointerdown", on);
+          btn.addEventListener("pointerup", off);
+          btn.addEventListener("pointerleave", off);
+          btn.addEventListener("pointercancel", off);
+        });
+        document.getElementById("actBtn").addEventListener("click", interact);
+
+        document.getElementById("resetBtn").addEventListener("click", function(){
+          collected = {}; cosmetics = {}; templeArmed = false; slothMet = false; gateMute = null; selectedTrail = null; target = null; pendingDoor = false; pendingLibrary = false; pendingLobbyWalk = null;
+          if (room !== "lobby") enterRoom("lobby"); // a reset always wakes up back in the lobby
+          pos = { x: SPAWN.x, y: SPAWN.y };
+          document.getElementById("templeSpark").style.display = "";
+          renderSatchel();
+          facing = "south"; setSprite("south", 0);
+          detailEl.className = "detail"; detailEl.innerHTML = "";
+          renderHUD(); renderList(); refreshStones();
+          say("Walk my trails, young druid. Each path leads somewhere I cannot go. Return and tell me what you found.", "The grove is reset — five sparks sleep at the trail ends again.");
+        });
+
+        // ---------- boot ----------
+        // Preload every Wang tile in both sets, the dark-grass fills and the
+        // dirt texture; paint the grounds once all are in.
+        var tilesPending = 0, groundsPainted = false;
+        function trackTile(im, src){
+          tilesPending++;
+          im.onload = im.onerror = function(){
+            if (--tilesPending === 0 && !groundsPainted){ groundsPainted = true; drawGrounds(); }
+          };
+          im.src = av(src);
+        }
+        Object.keys(TILE_DIRS).forEach(function(setName){
+          var seen = {};
+          Object.keys(TILE_SETS[setName]).forEach(function(mk){
+            TILE_SETS[setName][mk].forEach(function(fn){
+              if (seen[fn]) return;
+              seen[fn] = true;
+              var im = new Image();
+              tileImgs[setName][fn] = im;
+              trackTile(im, TILE_DIRS[setName] + fn);
+            });
+          });
+        });
+        DARK_FILL.forEach(function(fn, i){
+          var im = new Image();
+          darkFillImgs[i] = im;
+          trackTile(im, "assets/tiles/grass-dark-gentle/" + fn);
+        });
+        dirtTrailImg = new Image();
+        trackTile(dirtTrailImg, "assets/tiles/dirt-trail-64-v2.png");
+
+        renderHUD(); renderList(); renderSatchel(); renderPlayer();
+        requestAnimationFrame(loop);
+      })();
+    </script>
+  </body>
+</html>
