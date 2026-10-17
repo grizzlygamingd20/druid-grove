@@ -824,14 +824,14 @@
           return false;
         }
         function socialDirtAt(i, j){ // corner-lattice point in social-room tile coords — S-bend path + bonfire clearing
-          var ex = (i - 12) / 7, ey = (j - 5.5) / 4.5;
+          var ex = (i - 12) / 7.5, ey = (j - 5.5) / 5;
           if (ex*ex + ey*ey < 1) return true; // the bonfire clearing, dirt like the plaza
           // S-bend: enter bottom-center, wind left, then right, up to the clearing
           var SEGS = [[[12,17.5],[8.5,14]], [[8.5,14],[15.5,11]], [[15.5,11],[12,8]]];
           for (var s = 0; s < SEGS.length; s++){
-            if (segDist(i, j, SEGS[s][0][0], SEGS[s][0][1], SEGS[s][1][0], SEGS[s][1][1]) < 1.1) return true;
+            if (segDist(i, j, SEGS[s][0][0], SEGS[s][0][1], SEGS[s][1][0], SEGS[s][1][1]) < 1.8) return true;
           }
-          if (Math.abs(i - 12) < 1.25 && j >= 15) return true; // dirt path off the bottom edge — the way back to the lobby
+          if (Math.abs(i - 12) < 1.6 && j >= 15) return true; // dirt path off the bottom edge — the way back to the lobby
           return false;
         }
         var tileMask = []; // lobby per-tile mask, reused for decor placement
