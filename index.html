@@ -1575,7 +1575,11 @@
           fadeVeil.classList.add("on");
           var wait = reduceMotion ? 40 : 300;
           setTimeout(function(){
-            enterRoom(dest);
+            try {
+              enterRoom(dest);
+            } catch (err) {
+              console.error("enterRoom failed for " + dest + ":", err);
+            }
             fadeVeil.classList.remove("on");
             setTimeout(function(){ transitioning = false; }, wait);
           }, wait);
