@@ -728,7 +728,7 @@
         var LINKWOOD_LINES = [
           "Walk my trails, young druid. Each path leads somewhere I cannot go. Return and tell me what you found.",
           "My roots are the trailheads. Stone means a main road, little one. Wood means a turnoff.",
-          "Five sparks sleep at the ends of my roots. Gather them, and the grove will remember your name.",
+          "Something dark is creeping into my roots. I feel it in my sleep — a cold where there should be warmth. Will you look?",
           "A new link does not need a new road. It branches off a trail that already hums, and the grove makes room.",
           "Hmm. You smell of rain and other places. Good. That is what trails are for."
         ];
@@ -1159,8 +1159,11 @@
         var lineIdx = 0;
         function progressLine(){
           var n = Object.keys(collected).length;
-          if (n === 5) return "Five sparks, and a cloak full of stars. Walk tall, little one — every road here knows your feet now.";
-          if (n > 0) return n + (n === 1 ? " of five" : " of five") + ", little one. My roots hum a little brighter. The grove remembers.";
+          if (n === 5) return "Five sparks, cut clean. The cold is gone from my roots — all that is left is the heart. Take them to the bear, little one. He knows what comes next.";
+          if (n === 4) return "Four of five. I can feel the warmth returning, but the deepest root still aches. It is the one closest to my heart. Be careful there.";
+          if (n === 3) return "Three. The cold is retreating, little one. But I am tired — each cutting takes something. Do not worry for me. Worry for the roots that remain.";
+          if (n === 2) return "Two sparks. The ache is duller where you cut. I did not know how much it hurt until it stopped. Thank you.";
+          if (n === 1) return "One. It stung, little one — I will not lie. But the darkness in that root is gone. Take the end to the bear. He will know what to carve.";
           return LINKWOOD_LINES[lineIdx % LINKWOOD_LINES.length];
         }
         document.getElementById("treeWrap").addEventListener("click", function(ev){
