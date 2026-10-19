@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-18.10";
+      window.GROVE_BUILD = "2026-10-18.11";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -581,7 +581,7 @@
                 <div class="mist" style="left:120px;top:640px"></div>
                 <div class="mist" style="left:880px;top:180px;width:140px"></div>
                 <button type="button" class="site fountain" id="fountainEl" aria-label="Touch the faerie fountain">
-                  <img src="assets/fountain-watch-200.png" alt="A faerie fountain where the water shows moving pictures" />
+                  <img src="assets/fountain-watch-200-v2.png" alt="A faerie fountain where the water shows moving pictures" />
                 </button>
                 <!-- turtle folk NPC: no clean sprite cut yet, placeholder for future -->
               </div>
@@ -672,7 +672,7 @@
         var DECKS_ENTRY = { x: 576, y: 754 };  // just inside the decks screen's bottom edge
         var DECKS_DOOR = { x: 576, y: 430 };   // walk-to point in front of the library door
         var LIBBUILD = { x0: 348, x1: 804, y0: 190, y1: 392 }; // library footprint blocker
-        var FOUNTBUILD = { x0: 476, x1: 676, y0: 120, y1: 280 }; // fountain footprint blocker
+        var FOUNTBUILD = { x0: 476, x1: 676, y0: 120, y1: 291 }; // fountain footprint blocker
         var SLOTH = { x: 700, y: 430 };        // the librarian, standing by the door
         // The SOCIAL screen: S-bend trail to the bonfire chief — walk up the
         // Social trail past its waystone to fade in; walk off its bottom edge
@@ -1239,7 +1239,7 @@
         var WHO_CHIEF = { name: "BONFIRE CHIEF", img: "assets/bonfire-chief-384.png", npc: true };
         var WHO_LODGE = { name: "THE STONE LODGE", img: "assets/community-lodge-256.png", npc: true };
         var WHO_ALTAR = { name: "THE STONE ALTAR", img: "assets/community-altar.png", npc: true };
-        var WHO_FOUNTAIN = { name: "THE FAERIE FOUNTAIN", img: "assets/fountain-watch-200.png", npc: true };
+        var WHO_FOUNTAIN = { name: "THE FAERIE FOUNTAIN", img: "assets/fountain-watch-200-v2.png", npc: true };
         var dialogueName = document.getElementById("dialogueName");
         var dialogueAvatar = document.getElementById("dialogueAvatar");
         var dialogueAvatarImg = document.getElementById("dialogueAvatarImg");
