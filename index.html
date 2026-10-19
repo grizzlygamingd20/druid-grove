@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-19.7";
+      window.GROVE_BUILD = "2026-10-19.8";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -955,14 +955,23 @@
           return mask;
         }
         var rootImgs = [];
+        var rootsLoaded = 0, rootsPainted = false;
+        function tryPaintRoots(){
+          if (rootsPainted) return;
+          if (rootsLoaded < 18) return;
+          rootsPainted = true;
+          paintRoots();
+        }
         for (var ri = 0; ri < 18; ri++){
           (function(i){
             var img = new Image();
+            img.onload = function(){ rootImgs[i] = img; rootsLoaded++; tryPaintRoots(); };
+            img.onerror = function(){ rootsLoaded++; tryPaintRoots(); };
             img.src = "assets/tiles/roots/root_" + i + ".png";
-            img.onload = function(){ rootImgs[i] = img; };
             rootImgs[i] = img;
           })(ri);
         }
+        setInterval(tryPaintRoots, 1000); // safety net: repaint if ground was redrawn
         // Root tile masks: bit0=N bit1=E bit2=S bit3=W (from PixelLab placement rules)
         // tile_0,1: plain ground | 2:N-end 3:E-end 4:S-end 5:W-end | 6:E+W 7:N+S straights
         // 8:E+S 9:S+W 10:N+E 11:N+W corners | 12:S+W+E 13:N+W+E 14:N+E+S 15:N+S+W T-junctions | 16: all crossroads
@@ -1010,7 +1019,7 @@
         }
         function drawGrounds(){ // lobby from grass + dark grass; the two side rooms from grass-dirt (dirt clearings, like the plaza)
           tileMask = paintGround(document.getElementById("ground"), COLS, ROWS, dirtAt, darkBandAt, 0);
-          setTimeout(paintRoots, 500); // roots overlay after tiles load
+          rootsPainted = false; tryPaintRoots(); // roots overlay once tiles load
           scatterInto(document.getElementById("decor"), tileMask, COLS, ROWS, 80, 30, 12);
           var shopMask = paintGround(document.getElementById("groundShop"), SHOP_COLS, SHOP_ROWS, shopDirtAt, null, 101);
           scatterInto(document.getElementById("decorShop"), shopMask, SHOP_COLS, SHOP_ROWS, 26, 10, 4);
