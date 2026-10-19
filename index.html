@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-18.8";
+      window.GROVE_BUILD = "2026-10-18.9";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -379,6 +379,9 @@
       .altar{left:528px;top:192px}
       .altar img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
       .pillar{position:absolute;z-index:2;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 6px 6px rgba(0,0,0,.3))}
+      .world.watch-world{width:1152px;height:864px}
+      .fountain{left:476px;top:96px}
+      .fountain img{filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
       .benches{position:absolute;left:401px;top:470px;width:350px;z-index:6;pointer-events:none;image-rendering:pixelated;opacity:.95}
       .npc.wispO{left:400px;top:440px;transform:translate(-50%,-92%)}
       .npc.wispB{left:576px;top:418px;transform:translate(-50%,-92%)}
@@ -572,6 +575,16 @@
                 <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:454px;top:36px" />
                 <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:634px;top:36px" />
               </div>
+              <div class="world watch-world" id="watchWorld" style="display:none">
+                <canvas class="groundcv" id="groundWatch" width="1152" height="864" aria-hidden="true"></canvas>
+                <div id="decorWatch"></div>
+                <div class="mist" style="left:120px;top:640px"></div>
+                <div class="mist" style="left:880px;top:180px;width:140px"></div>
+                <button type="button" class="site fountain" id="fountainEl" aria-label="Touch the faerie fountain">
+                  <img src="assets/fountain-watch-200.png" alt="A faerie fountain where the water shows moving pictures" />
+                </button>
+                <!-- turtle folk NPC: no clean sprite cut yet, placeholder for future -->
+              </div>
               <div class="fadeveil" id="fadeVeil" aria-hidden="true"></div>
               <div class="zoomctl" role="group" aria-label="Camera zoom">
                 <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
@@ -659,6 +672,7 @@
         var DECKS_ENTRY = { x: 576, y: 754 };  // just inside the decks screen's bottom edge
         var DECKS_DOOR = { x: 576, y: 430 };   // walk-to point in front of the library door
         var LIBBUILD = { x0: 348, x1: 804, y0: 190, y1: 392 }; // library footprint blocker
+        var FOUNTBUILD = { x0: 476, x1: 676, y0: 120, y1: 280 }; // fountain footprint blocker
         var SLOTH = { x: 700, y: 430 };        // the librarian, standing by the door
         // The SOCIAL screen: S-bend trail to the bonfire chief — walk up the
         // Social trail past its waystone to fade in; walk off its bottom edge
@@ -668,19 +682,24 @@
         var SOCIAL_W = SOCIAL_COLS * TILE, SOCIAL_H = SOCIAL_ROWS * TILE; // 1152 x 864
         var SOCIAL_ENTRY = { x: 576, y: 754 }; // just inside the social screen's bottom edge
         var SOCIAL_DOOR = { x: 576, y: 430 };  // walk-to point in front of the bonfire
+        var WATCH_DOOR = { x: 576, y: 330 };  // walk-to point in front of the fountain
         var BONFIRE = { x: 576, y: 280, x0: 470, x1: 682, y0: 190, y1: 360 }; // bonfire footprint blocker
         var COMMUNITY_COLS = 24, COMMUNITY_ROWS = 18;
         var COMMUNITY_W = COMMUNITY_COLS * TILE, COMMUNITY_H = COMMUNITY_ROWS * TILE; // 1152 x 864
         var COMMUNITY_ENTRY = { x: 576, y: 754 }; // just inside the community screen's bottom edge
+        var WATCH_COLS = 24, WATCH_ROWS = 18;
+        var WATCH_W = WATCH_COLS * TILE, WATCH_H = WATCH_ROWS * TILE; // 1152 x 864
+        var WATCH_ENTRY = { x: 576, y: 754 }; // just inside the watch screen's bottom edge
         var WISPS = [
           { id: "wispO", x: 400, y: 440 },
           { id: "wispB", x: 576, y: 418 },
           { id: "wispG", x: 752, y: 440 }
         ];
-        var room = "lobby"; // "lobby" | "shop" | "decks" | "social" | "community" — which screen she is on
+        var room = "lobby"; // "lobby" | "shop" | "decks" | "social" | "community" | "watch" — which screen she is on
         var pendingDoor = false;     // panel sent her up the trail: after the fade, keep walking to the woodshop door
         var pendingLibrary = false;  // panel sent her up the Decks trail: after the fade, keep walking to the library door
         var pendingBonfire = false;  // panel sent her up the Social trail: after the fade, keep walking to the bonfire
+        var pendingFountain = false;  // panel sent her up the Watch trail: after the fade, keep walking to the fountain
         var pendingLobbyWalk = null; // panel picked another trail from a side screen: after fading back, walk to that waystone
         var slothMet = false; // the librarian's first-talk line is spent
         var gateMute = null; // trail id whose lobby gate stays shut during a panel-sent walk back out of its room
@@ -727,6 +746,8 @@
         TRAILS.forEach(function(t){ if (t.id === "social") socialTrailRef = t; });
         var communityTrailRef = null;
         TRAILS.forEach(function(t){ if (t.id === "community") communityTrailRef = t; });
+        var watchTrailRef = null;
+        TRAILS.forEach(function(t){ if (t.id === "watch") watchTrailRef = t; });
 
         // winding path waypoints (tile coords), from the plaza to each waystone
         var PATHS = {
@@ -871,6 +892,16 @@
           if (Math.abs(i - 12) < 1.4 && j >= 11) return true; // path from clearing to bottom edge
           return false;
         }
+        function watchDirtAt(i, j){ // corner-lattice point in watch-room tile coords — pond basin + split paths
+          var px = (i - 12) / 4.5, py = (j - 8) / 3.5;
+          if (px*px + py*py < 1) return true; // the pond basin
+          var fx = (i - 12) / 3, fy = (j - 2.5) / 2;
+          if (fx*fx + fy*fy < 1) return true; // fountain clearing at the north end
+          if (Math.abs(i - 12) < 1.4 && j >= 11) return true; // path from basin to bottom edge
+          if (j >= 4.5 && j <= 11.5 && Math.abs(i - 6.5) < 1.4) return true; // west path around the pond
+          if (j >= 4.5 && j <= 11.5 && Math.abs(i - 17.5) < 1.4) return true; // east path around the pond
+          return false;
+        }
         var tileMask = []; // lobby per-tile mask, reused for decor placement
         function paintGround(cv, cols, rows, dirtFn, darkFn, salt){
           var g = cv.getContext("2d");
@@ -934,6 +965,8 @@
           scatterInto(document.getElementById("decorSocial"), socialMask, SOCIAL_COLS, SOCIAL_ROWS, 26, 10, 4);
           var communityMask = paintGround(document.getElementById("groundCommunity"), COMMUNITY_COLS, COMMUNITY_ROWS, communityDirtAt, null, 404);
           scatterInto(document.getElementById("decorCommunity"), communityMask, COMMUNITY_COLS, COMMUNITY_ROWS, 26, 10, 4);
+          var watchMask = paintGround(document.getElementById("groundWatch"), WATCH_COLS, WATCH_ROWS, watchDirtAt, null, 505);
+          scatterInto(document.getElementById("decorWatch"), watchMask, WATCH_COLS, WATCH_ROWS, 26, 14, 6);
         }
 
         // ---------- decor ----------
@@ -966,8 +999,9 @@
         var decksWorldEl = document.getElementById("decksWorld");
         var socialWorldEl = document.getElementById("socialWorld");
         var communityWorldEl = document.getElementById("communityWorld");
+        var watchWorldEl = document.getElementById("watchWorld");
         var fadeVeil = document.getElementById("fadeVeil");
-        function activeWorld(){ return room === "shop" ? shopWorldEl : room === "decks" ? decksWorldEl : room === "social" ? socialWorldEl : room === "community" ? communityWorldEl : world; }
+        function activeWorld(){ return room === "shop" ? shopWorldEl : room === "decks" ? decksWorldEl : room === "social" ? socialWorldEl : room === "community" ? communityWorldEl : room === "watch" ? watchWorldEl : world; }
         var playerEl = document.getElementById("player");
         var playerCanvas = document.getElementById("playerCanvas");
         var promptEl = document.getElementById("prompt");
@@ -993,7 +1027,7 @@
           pink:  { src: "assets/decor/decor-flowers-pink-v2.png", w: 130, h: 28 },
           blue:  { src: "assets/decor/decor-flowers-blue-v2.png", w: 70,  h: 60 }
         };
-        var gfSolids = { lobby: [], shop: [], decks: [], social: [], community: [] }; // { el, base, rect } per room, for collision + depth sort
+        var gfSolids = { lobby: [], shop: [], decks: [], social: [], community: [], watch: [] }; // { el, base, rect } per room, for collision + depth sort
         function gfPlace(host, roomName, kind, x, y, solid){
           var d = GF_DECOR[kind];
           var im = document.createElement("img");
@@ -1046,6 +1080,13 @@
         gfPlace(communityWorldEl, "community", "tree", 950, 650, true);
         gfPlace(communityWorldEl, "community", "rocks", 850, 720, true);
         [[300,320],[860,320],[420,660],[760,640],[150,700],[1000,700]].forEach(function(p){ gfPlace(communityWorldEl, "community", "pink", p[0], p[1], false); });
+        gfPlace(watchWorldEl, "watch", "tree", 120, 140, true);
+        gfPlace(watchWorldEl, "watch", "tree", 1030, 140, true);
+        gfPlace(watchWorldEl, "watch", "tree", 120, 680, true);
+        gfPlace(watchWorldEl, "watch", "tree", 1030, 680, true);
+        gfPlace(watchWorldEl, "watch", "rocks", 200, 420, true);
+        gfPlace(watchWorldEl, "watch", "rocks", 950, 420, true);
+        [[420,200],[740,200],[360,640],[800,640],[180,560],[980,560]].forEach(function(p){ gfPlace(watchWorldEl, "watch", "pink", p[0], p[1], false); });
 
         var collected = {}; // trail id -> true (this session only)
         var selectedTrail = null;
@@ -1138,6 +1179,8 @@
                   ? '<button class="btn" type="button" id="collectBtn">Walk to the bonfire</button><p class="fine" style="margin-top:8px">The bonfire chief waits in his clearing, up the S-bend trail past the waystone — the will-o&rsquo;-wisps keep his light, and no ghost bothers anyone in it.</p>'
                   : t.id === "community"
                   ? '<button class="btn" type="button" id="collectBtn">Walk to the stone circle</button><p class="fine" style="margin-top:8px">The stone lodge stands in its circle, up the trail past the waystone — the rock people gather there, and the red spark waits on the altar.</p>'
+                  : t.id === "watch"
+                  ? '<button class="btn" type="button" id="collectBtn">Walk to the faerie fountain</button><p class="fine" style="margin-top:8px">The faerie fountain waits past the waystone, where the pond splits the trail — the turtle folk watch their stories on its water, and the blue spark glimmers in its basin.</p>'
                   : '<button class="btn" type="button" id="collectBtn">Walk this trail · gather the ' + t.name + ' spark ★</button>')) +
             '</div>';
           var cb = document.getElementById("collectBtn");
@@ -1157,6 +1200,11 @@
               else if (room === "shop") { pendingBonfire = true; pendingLobbyWalk = { x: socialTrailRef.sx, y: socialTrailRef.sy + 48 }; startTransition("lobby"); }
               else if (room === "decks") { pendingBonfire = true; pendingLobbyWalk = { x: socialTrailRef.sx, y: socialTrailRef.sy + 48 }; startTransition("lobby"); }
               else { pendingBonfire = true; walkTo(socialTrailRef.sx + 42, socialTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
+            }
+            else if (t.id === "watch") { // the fountain grants this spark — the button walks her there
+              if (room === "watch") walkTo(WATCH_DOOR.x, WATCH_DOOR.y);
+              else if (room === "shop" || room === "decks" || room === "social" || room === "community") { pendingFountain = true; pendingLobbyWalk = { x: watchTrailRef.sx, y: watchTrailRef.sy + 48 }; startTransition("lobby"); }
+              else { pendingFountain = true; walkTo(watchTrailRef.sx + 42, watchTrailRef.sy + 33); } // up the trail, past the waystone, through the fade
             }
             else collect(t);
           });
@@ -1191,6 +1239,7 @@
         var WHO_CHIEF = { name: "BONFIRE CHIEF", img: "assets/bonfire-chief-384.png", npc: true };
         var WHO_LODGE = { name: "THE STONE LODGE", img: "assets/community-lodge-256.png", npc: true };
         var WHO_ALTAR = { name: "THE STONE ALTAR", img: "assets/community-altar.png", npc: true };
+        var WHO_FOUNTAIN = { name: "THE FAERIE FOUNTAIN", img: "assets/fountain-watch-200.png", npc: true };
         var dialogueName = document.getElementById("dialogueName");
         var dialogueAvatar = document.getElementById("dialogueAvatar");
         var dialogueAvatarImg = document.getElementById("dialogueAvatarImg");
@@ -1317,6 +1366,22 @@
           TRAILS.forEach(function(t){ if (t.id === "community") communityTrail = t; });
           collect(communityTrail);
         }
+        var fountainArmed = false;
+        function visitFountain(){
+          if (collected.watch) {
+            say("The fountain ripples gently. The blue spark is yours.", "The faerie fountain — its blue star now burns in your StarForce.", WHO_FOUNTAIN);
+            return;
+          }
+          if (!fountainArmed) {
+            fountainArmed = true;
+            say("A faerie fountain, old as the grove. The water shows moving pictures — and deep in the basin, a blue star glimmers.", "Press E again — or tap the fountain — to gather the blue spark.", WHO_FOUNTAIN);
+            return;
+          }
+          fountainArmed = false;
+          var watchTrail = null;
+          TRAILS.forEach(function(t){ if (t.id === "watch") watchTrail = t; });
+          collect(watchTrail);
+        }
         function talkWisp(color){
           var lines = {
             orange: "Hihi! I'm Ember! The chief's light keeps the ghosts polite. Stay as long as you like!",
@@ -1360,6 +1425,8 @@
         wispGreenEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkWisp("green"); });
         if (lodgeEl) lodgeEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkLodge(); });
         if (altarEl) altarEl.addEventListener("click", function(ev){ ev.stopPropagation(); visitAltar(); });
+        var fountainEl = document.getElementById("fountainEl");
+        if (fountainEl) fountainEl.addEventListener("click", function(ev){ ev.stopPropagation(); visitFountain(); });
         document.getElementById("libraryEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(DECKS_DOOR.x, DECKS_DOOR.y); });
         document.getElementById("templeEl").addEventListener("click", function(ev){ ev.stopPropagation(); visitTemple(); });
         document.getElementById("woodshopEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(SHOP_DOOR.x, SHOP_DOOR.y); });
@@ -1379,12 +1446,16 @@
         ];
         var LODGE = { x: 576, y: 200 }; // stone lodge center (160x160 at left:496, top:120)
         var ALTAR = { x: 748, y: 448 }; // stone altar center (96x96 at left:700, top:400)
+        var FOUNTAIN = { x: 576, y: 188 }; // faerie fountain center (200x184 at left:476, top:96)
         var COMMUNITY_SITES = [
           { id: "lodge", x: LODGE.x, y: LODGE.y, range: 130, label: "Enter the stone lodge", run: talkLodge },
           { id: "altar", x: ALTAR.x, y: ALTAR.y, range: 110, label: "Touch the stone altar", run: visitAltar }
         ];
+        var WATCH_SITES = [
+          { id: "fountain", x: FOUNTAIN.x, y: FOUNTAIN.y, range: 130, label: "Touch the faerie fountain", run: visitFountain }
+        ];
         function nearestSite(){
-          var sites = room === "shop" ? SITES : room === "decks" ? DECKS_SITES : room === "social" ? SOCIAL_SITES : room === "community" ? COMMUNITY_SITES : null; // each screen has its own folk
+          var sites = room === "shop" ? SITES : room === "decks" ? DECKS_SITES : room === "social" ? SOCIAL_SITES : room === "community" ? COMMUNITY_SITES : room === "watch" ? WATCH_SITES : null; // each screen has its own folk
           if (!sites) return { site: null, dist: 1e9 };
           var best = null, bestD = 1e9;
           sites.forEach(function(s){
@@ -1520,6 +1591,19 @@
           if (room === "community") {
             gfSolids.community.forEach(function(s){ blockRect(s.rect); }); // Gentle Forest trees + rocks
             COMMUNITY_SITES.forEach(function(s){
+              var nx = pos.x - s.x, ny = pos.y - s.y;
+              var nd = Math.sqrt(nx*nx + ny*ny);
+              if (nd < 28 && nd > 0.01) {
+                pos.x = s.x + (nx / nd) * 28;
+                pos.y = s.y + (ny / nd) * 28;
+              }
+            });
+            return;
+          }
+          if (room === "watch") {
+            blockRect(FOUNTBUILD);
+            gfSolids.watch.forEach(function(s){ blockRect(s.rect); }); // Gentle Forest trees + rocks
+            WATCH_SITES.forEach(function(s){
               var nx = pos.x - s.x, ny = pos.y - s.y;
               var nd = Math.sqrt(nx*nx + ny*ny);
               if (nd < 28 && nd > 0.01) {
@@ -1691,6 +1775,7 @@
           decksWorldEl.style.display = dest === "decks" ? "block" : "none";
           socialWorldEl.style.display = dest === "social" ? "block" : "none";
           communityWorldEl.style.display = dest === "community" ? "block" : "none";
+          watchWorldEl.style.display = dest === "watch" ? "block" : "none";
           var host = activeWorld();
           host.appendChild(playerEl); // she (and her prompt bubble) live on whichever screen is showing
           host.appendChild(promptEl);
@@ -1714,8 +1799,11 @@
           } else if (dest === "community") {
             pos = { x: COMMUNITY_ENTRY.x, y: COMMUNITY_ENTRY.y };
             facing = "north"; // just walked in off the bottom edge
+          } else if (dest === "watch") {
+            pos = { x: WATCH_ENTRY.x, y: WATCH_ENTRY.y };
+            facing = "north"; // just walked in off the bottom edge
           } else {
-            var homeStone = fromRoom === "decks" ? decksTrailRef : fromRoom === "social" ? socialTrailRef : fromRoom === "community" ? communityTrailRef : shopTrailRef;
+            var homeStone = fromRoom === "decks" ? decksTrailRef : fromRoom === "social" ? socialTrailRef : fromRoom === "community" ? communityTrailRef : fromRoom === "watch" ? watchTrailRef : shopTrailRef;
             pos = { x: homeStone.sx, y: homeStone.sy + 96 }; // back in the lobby, at that trail's waystone
             facing = "north";
           }
@@ -1724,6 +1812,7 @@
           if (dest === "shop" && pendingDoor) { pendingDoor = false; walkTo(SHOP_DOOR.x, SHOP_DOOR.y); }
           if (dest === "decks" && pendingLibrary) { pendingLibrary = false; walkTo(DECKS_DOOR.x, DECKS_DOOR.y); }
           if (dest === "social" && pendingBonfire) { pendingBonfire = false; walkTo(SOCIAL_DOOR.x, SOCIAL_DOOR.y); }
+          if (dest === "watch" && pendingFountain) { pendingFountain = false; walkTo(WATCH_DOOR.x, WATCH_DOOR.y); }
           if (dest === "lobby" && pendingLobbyWalk) { var pw = pendingLobbyWalk; pendingLobbyWalk = null; walkTo(pw.x, pw.y); }
           renderPlayer();
         }
@@ -1776,6 +1865,10 @@
                 var cox = pos.x - communityTrailRef.sx, coy = pos.y - communityTrailRef.sy;
                 if (cox * cox + coy * coy < 62 * 62) startTransition("community");
               }
+              if (gateMute !== "watch") {
+                var wax = pos.x - watchTrailRef.sx, way = pos.y - watchTrailRef.sy;
+                if (wax * wax + way * way < 62 * 62) startTransition("watch");
+              }
             } else if (room === "shop" && pos.y > SHOP_H - 34) {
               startTransition("lobby");
             } else if (room === "decks" && pos.y > DECKS_H - 34) {
@@ -1783,6 +1876,8 @@
             } else if (room === "social" && pos.y > SOCIAL_H - 34) {
               startTransition("lobby");
             } else if (room === "community" && pos.y > COMMUNITY_H - 34) {
+              startTransition("lobby");
+            } else if (room === "watch" && pos.y > WATCH_H - 34) {
               startTransition("lobby");
             }
           }
