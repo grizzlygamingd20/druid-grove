@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-18.5";
+      window.GROVE_BUILD = "2026-10-18.6";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -374,10 +374,11 @@
       .temple img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
       .bonfire{position:absolute;left:448px;top:96px;z-index:7;background:none;border:none;cursor:pointer;padding:0}
       .bonfire img{display:block;width:100%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
-      .lodge{left:496px;top:120px}
+      .lodge{left:880px;top:80px}
       .lodge img{filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
-      .altar{left:700px;top:400px}
+      .altar{left:544px;top:384px}
       .altar img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
+      .pillar{position:absolute;z-index:2;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 6px 6px rgba(0,0,0,.3))}
       .benches{position:absolute;left:401px;top:470px;width:350px;z-index:6;pointer-events:none;image-rendering:pixelated;opacity:.95}
       .npc.wispO{left:400px;top:440px;transform:translate(-50%,-92%)}
       .npc.wispB{left:576px;top:418px;transform:translate(-50%,-92%)}
@@ -564,6 +565,12 @@
                 <button type="button" class="site altar" id="altarEl" aria-label="Touch the stone altar">
                   <img src="assets/community-altar.png" alt="An ancient stone altar" />
                 </button>
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:726px;top:400px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:651px;top:530px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:501px;top:530px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:426px;top:400px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:501px;top:270px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:651px;top:270px" />
               </div>
               <div class="fadeveil" id="fadeVeil" aria-hidden="true"></div>
               <div class="zoomctl" role="group" aria-label="Camera zoom">
