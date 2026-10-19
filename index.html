@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-19.8";
+      window.GROVE_BUILD = "2026-10-19.9";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -983,20 +983,17 @@
           // Root paths radiating from Linkwood (lobby center-top) — each path is a list of [col,row] cells
           // Linkwood base is around col 23 (1104/48), rows 0-4. Roots spread outward and downward.
           var paths = [
+            // Roots emerge from under Linkwood's base (tree sprite ends ~y=1024, row 21) and spread outward
             // Path 1: down-left
-            [[22,5],[21,6],[20,7],[19,8],[18,9],[17,10],[16,11]],
+            [[23,21],[22,22],[21,23],[20,24],[19,25],[18,26],[17,27]],
             // Path 2: down
-            [[23,5],[23,6],[23,7],[24,8],[24,9],[24,10],[25,11],[25,12]],
+            [[23,21],[23,22],[23,23],[24,24],[24,25],[24,26],[25,27],[25,28]],
             // Path 3: down-right
-            [[24,5],[25,6],[26,7],[27,8],[28,9],[29,10]],
+            [[23,21],[24,22],[25,23],[26,24],[27,25],[28,26],[29,27]],
             // Path 4: left
-            [[21,4],[20,4],[19,4],[18,5],[17,5],[16,6],[15,6]],
+            [[22,21],[21,21],[20,22],[19,22],[18,23],[17,23],[16,24]],
             // Path 5: right
-            [[25,4],[26,4],[27,4],[28,5],[29,5],[30,6]],
-            // Path 6: far down-left wander
-            [[18,11],[17,12],[16,13],[15,14],[14,15]],
-            // Path 7: far down-right wander
-            [[26,11],[27,12],[28,13],[29,14],[30,15],[31,16]],
+            [[24,21],[25,21],[26,22],[27,22],[28,23],[29,23],[30,24]],
           ];
           // Build a set of root cells for mask computation
           var rootCells = {};
