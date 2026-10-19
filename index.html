@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-18.6";
+      window.GROVE_BUILD = "2026-10-18.7";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -374,9 +374,9 @@
       .temple img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
       .bonfire{position:absolute;left:448px;top:96px;z-index:7;background:none;border:none;cursor:pointer;padding:0}
       .bonfire img{display:block;width:100%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
-      .lodge{left:880px;top:80px}
+      .lodge{left:880px;top:40px}
       .lodge img{filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
-      .altar{left:544px;top:384px}
+      .altar{left:528px;top:240px}
       .altar img{filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}
       .pillar{position:absolute;z-index:2;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 6px 6px rgba(0,0,0,.3))}
       .benches{position:absolute;left:401px;top:470px;width:350px;z-index:6;pointer-events:none;image-rendering:pixelated;opacity:.95}
@@ -565,12 +565,12 @@
                 <button type="button" class="site altar" id="altarEl" aria-label="Touch the stone altar">
                   <img src="assets/community-altar.png" alt="An ancient stone altar" />
                 </button>
-                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:726px;top:400px" />
-                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:651px;top:530px" />
-                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:501px;top:530px" />
-                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:426px;top:400px" />
-                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:501px;top:270px" />
-                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:651px;top:270px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:724px;top:192px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:634px;top:348px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:454px;top:348px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:364px;top:192px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:454px;top:36px" />
+                <img class="pillar" src="assets/community-stone.png" alt="" aria-hidden="true" style="left:634px;top:36px" />
               </div>
               <div class="fadeveil" id="fadeVeil" aria-hidden="true"></div>
               <div class="zoomctl" role="group" aria-label="Camera zoom">
@@ -1042,7 +1042,6 @@
         gfPlace(socialWorldEl, "social", "rocks", 850, 720, true);
         [[300,320],[860,320],[420,660],[760,640],[150,700],[1000,700]].forEach(function(p){ gfPlace(socialWorldEl, "social", "pink", p[0], p[1], false); });
         gfPlace(communityWorldEl, "community", "tree", 130, 180, true);
-        gfPlace(communityWorldEl, "community", "tree", 1020, 180, true);
         gfPlace(communityWorldEl, "community", "tree", 200, 560, true);
         gfPlace(communityWorldEl, "community", "tree", 950, 560, true);
         gfPlace(communityWorldEl, "community", "rocks", 850, 720, true);
