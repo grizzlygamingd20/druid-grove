@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-19.10";
+      window.GROVE_BUILD = "2026-10-19.11";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -1085,7 +1085,17 @@
           log:   { src: "assets/decor/decor-log.png",          w: 110, h: 90,  fw: 100, fh: 34 },
           rocks: { src: "assets/decor/decor-rocks-v3.png",        w: 150, h: 49,  fw: 110, fh: 36 },
           pink:  { src: "assets/decor/decor-flowers-pink-v2.png", w: 130, h: 28 },
-          blue:  { src: "assets/decor/decor-flowers-blue-v2.png", w: 70,  h: 60 }
+          blue:  { src: "assets/decor/decor-flowers-blue-v2.png", w: 70,  h: 60 },
+          tFirAlba:   { src: "assets/decor/trees/tree-fir-alba.png",      w: 128, h: 256, fw: 40, fh: 24 },
+          tHemlock:   { src: "assets/decor/trees/tree-pine-hemlock.png",  w: 128, h: 192, fw: 40, fh: 24 },
+          tCedarLeb:  { src: "assets/decor/trees/tree-cedar-lebanon.png", w: 192, h: 256, fw: 48, fh: 28 },
+          tMonkey:    { src: "assets/decor/trees/tree-monkey-puzzle.png", w: 128, h: 192, fw: 40, fh: 24 },
+          tFig:       { src: "assets/decor/trees/tree-fig-mulberry.png",  w: 256, h: 192, fw: 48, fh: 28 },
+          tCedarRed:  { src: "assets/decor/trees/tree-cedar-red.png",      w: 128, h: 192, fw: 40, fh: 24 },
+          tFirSilver: { src: "assets/decor/trees/tree-fir-silver.png",     w: 128, h: 256, fw: 40, fh: 24 },
+          tPineStone: { src: "assets/decor/trees/tree-pine-stone.png",     w: 192, h: 256, fw: 48, fh: 28 },
+          tPineSwiss: { src: "assets/decor/trees/tree-pine-swiss.png",     w: 128, h: 192, fw: 40, fh: 24 },
+          tWillow:    { src: "assets/decor/trees/tree-willow.png",         w: 256, h: 256, fw: 56, fh: 30 }
         };
         var gfSolids = { lobby: [], shop: [], decks: [], social: [], community: [], watch: [] }; // { el, base, rect } per room, for collision + depth sort
         function gfPlace(host, roomName, kind, x, y, solid){
@@ -1107,6 +1117,17 @@
         gfPlace(world, "lobby", "rocks", 600, 150, true);
         gfPlace(world, "lobby", "rocks", 1600, 150, true);
         gfPlace(world, "lobby", "rocks", 1104, 1500, true);
+        // new tree pack — forest border trees around the lobby edges
+        gfPlace(world, "lobby", "tFirAlba", 420, 220, true);
+        gfPlace(world, "lobby", "tHemlock", 700, 180, true);
+        gfPlace(world, "lobby", "tCedarLeb", 1500, 200, true);
+        gfPlace(world, "lobby", "tMonkey", 1800, 220, true);
+        gfPlace(world, "lobby", "tFig", 320, 700, true);
+        gfPlace(world, "lobby", "tCedarRed", 1900, 700, true);
+        gfPlace(world, "lobby", "tFirSilver", 320, 1100, true);
+        gfPlace(world, "lobby", "tPineStone", 1900, 1100, true);
+        gfPlace(world, "lobby", "tPineSwiss", 700, 1480, true);
+        gfPlace(world, "lobby", "tWillow", 1500, 1480, true);
         // Stumps + log are parked: decor-stump.png and decor-log.png were
         // mis-cropped from the pack (tree-base / slope fragments with grass
         // baked in) and drew as dark boxes on the dirt. Re-crop them as clean
