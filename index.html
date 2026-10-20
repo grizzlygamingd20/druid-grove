@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-19.12";
+      window.GROVE_BUILD = "2026-10-20.1";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -410,6 +410,7 @@
       .npc.bear{left:292px;top:376px;width:132px;transform:translate(-50%,-95%)}
       .npc.bee{left:492px;top:376px;width:108px;transform:translate(-50%,-92%)}
       .npc.sloth{left:700px;top:430px;width:120px;transform:translate(-50%,-95%)}
+      .npc.mason{left:940px;top:300px;width:120px;transform:translate(-50%,-95%)}
       .npc.near img{filter:drop-shadow(0 6px 5px rgba(0,0,0,.4)) drop-shadow(0 0 12px rgba(240,205,90,.95))}
       .npc:focus-visible, .site:focus-visible{outline:3px solid var(--gold-bright);outline-offset:2px}
       .avatar.whoface img{width:100%;height:100%;left:0;top:0;object-fit:contain;padding:3px}
@@ -564,7 +565,10 @@
                 <button type="button" class="site lodge" id="lodgeEl" aria-label="Enter the stone lodge">
                   <img src="assets/community-lodge-256.png" alt="The stone lodge — home of the rock people" />
                 </button>
-                <!-- mason NPC: no sprite yet, placeholder for future -->
+                <button type="button" class="npc mason" id="masonEl" aria-label="Talk to the mason">
+                  <img src="assets/npc-mason-96.png" alt="" />
+                  <span class="wlabel pixel">MASON</span>
+                </button>
                 <button type="button" class="site altar" id="altarEl" aria-label="Touch the stone altar">
                   <img src="assets/community-altar.png" alt="An ancient stone altar" />
                 </button>
@@ -1315,6 +1319,7 @@
         var WHO_SLOTH = { name: "SLOTH · LIBRARIAN", img: "assets/sloth-librarian-96.png", npc: true };
         var WHO_CHIEF = { name: "BONFIRE CHIEF", img: "assets/bonfire-chief-384.png", npc: true };
         var WHO_LODGE = { name: "THE STONE LODGE", img: "assets/community-lodge-256.png", npc: true };
+        var WHO_MASON = { name: "MASON · STONEKEEPER", img: "assets/npc-mason-96.png", npc: true };
         var WHO_ALTAR = { name: "THE STONE ALTAR", img: "assets/community-altar.png", npc: true };
         var WHO_FOUNTAIN = { name: "THE FAERIE FOUNTAIN", img: "assets/fountain-watch-200-v2.png", npc: true };
         var dialogueName = document.getElementById("dialogueName");
@@ -1427,6 +1432,15 @@
                 "The stone lodge — home of the rock people.", WHO_LODGE);
           }
         }
+        var masonMet = false;
+        function talkMason(){
+          var first = !masonMet;
+          masonMet = true;
+          say(first
+            ? "\"Mind your step, druid. Fresh mortar.\" Her voice is gravel and patience. \"Every stone in this circle passed through my hands. I keep them standing — and the lodge besides.\""
+            : "\"Stone remembers, druid. So do we.\" She taps the nearest pillar twice, the way you'd pat an old friend.",
+            "Mason — stonekeeper of the circle and keeper of the lodge.", WHO_MASON);
+        }
         var altarArmed = false;
         function visitAltar(){
           if (collected.community) {
@@ -1492,6 +1506,7 @@
         var wispBlueEl = document.getElementById("wispBlueEl");
         var wispGreenEl = document.getElementById("wispGreenEl");
         var lodgeEl = document.getElementById("lodgeEl");
+        var masonEl = document.getElementById("masonEl");
         var altarEl = document.getElementById("altarEl");
         bearEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkBear(); });
         beeEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkBee(); });
@@ -1501,6 +1516,7 @@
         wispBlueEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkWisp("blue"); });
         wispGreenEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkWisp("green"); });
         if (lodgeEl) lodgeEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkLodge(); });
+        if (masonEl) masonEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkMason(); });
         if (altarEl) altarEl.addEventListener("click", function(ev){ ev.stopPropagation(); visitAltar(); });
         var fountainEl = document.getElementById("fountainEl");
         if (fountainEl) fountainEl.addEventListener("click", function(ev){ ev.stopPropagation(); visitFountain(); });
@@ -1526,6 +1542,7 @@
         var FOUNTAIN = { x: 576, y: 188 }; // faerie fountain center (200x184 at left:476, top:96)
         var COMMUNITY_SITES = [
           { id: "lodge", x: LODGE.x, y: LODGE.y, range: 130, label: "Enter the stone lodge", run: talkLodge },
+          { id: "mason", x: 940, y: 300, range: 112, label: "Talk to the mason", run: talkMason },
           { id: "altar", x: ALTAR.x, y: ALTAR.y, range: 110, label: "Touch the stone altar", run: visitAltar }
         ];
         var WATCH_SITES = [
@@ -1774,6 +1791,7 @@
           wispBlueEl.classList.toggle("near", !!(ns.site && ns.site.id === "wispB"));
           wispGreenEl.classList.toggle("near", !!(ns.site && ns.site.id === "wispG"));
           if (typeof lodgeEl !== "undefined" && lodgeEl) lodgeEl.classList.toggle("near", !!(ns.site && ns.site.id === "lodge"));
+          if (typeof masonEl !== "undefined" && masonEl) masonEl.classList.toggle("near", !!(ns.site && ns.site.id === "mason"));
           if (typeof altarEl !== "undefined" && altarEl) altarEl.classList.toggle("near", !!(ns.site && ns.site.id === "altar"));
           // (the shrine stays "described" until the spark is gathered or the grove resets — no walk-away disarm: temple clicks work from anywhere, like Linkwood's)
           var dt = treeDist();
