@@ -26,7 +26,7 @@
       // script).
       // BUMP THE STAMP on every publish — it is the only signal old
       // copies have that a newer grove exists.
-      window.GROVE_BUILD = "2026-10-20.2";
+      window.GROVE_BUILD = "2026-10-20.3";
       (function(){
         var running = window.GROVE_BUILD;
         var busy = false;
@@ -411,6 +411,7 @@
       .npc.bee{left:492px;top:376px;width:108px;transform:translate(-50%,-92%)}
       .npc.sloth{left:700px;top:430px;width:120px;transform:translate(-50%,-95%)}
       .npc.mason{left:940px;top:300px;width:120px;transform:translate(-50%,-95%)}
+      .npc.turtle{left:716px;top:300px;width:120px;transform:translate(-50%,-95%)}
       .npc.near img{filter:drop-shadow(0 6px 5px rgba(0,0,0,.4)) drop-shadow(0 0 12px rgba(240,205,90,.95))}
       .npc:focus-visible, .site:focus-visible{outline:3px solid var(--gold-bright);outline-offset:2px}
       .avatar.whoface img{width:100%;height:100%;left:0;top:0;object-fit:contain;padding:3px}
@@ -587,7 +588,10 @@
                 <button type="button" class="site fountain" id="fountainEl" aria-label="Touch the faerie fountain">
                   <img src="assets/fountain-watch-200-v2.png" alt="A faerie fountain where the water shows moving pictures" />
                 </button>
-                <!-- turtle folk NPC: no clean sprite cut yet, placeholder for future -->
+                <button type="button" class="npc turtle" id="turtleEl" aria-label="Talk to the turtle">
+                  <img src="assets/npc-turtle-96.png" alt="" />
+                  <span class="wlabel pixel">TURTLE</span>
+                </button>
               </div>
               <div class="fadeveil" id="fadeVeil" aria-hidden="true"></div>
               <div class="zoomctl" role="group" aria-label="Camera zoom">
@@ -1322,6 +1326,7 @@
         var WHO_MASON = { name: "MASON · STONEKEEPER", img: "assets/npc-mason-96.png", npc: true };
         var WHO_ALTAR = { name: "THE STONE ALTAR", img: "assets/community-altar.png", npc: true };
         var WHO_FOUNTAIN = { name: "THE FAERIE FOUNTAIN", img: "assets/fountain-watch-200-v2.png", npc: true };
+        var WHO_TURTLE = { name: "TURTLE · FOUNTAIN-WATCHER", img: "assets/npc-turtle-96.png", npc: true };
         var dialogueName = document.getElementById("dialogueName");
         var dialogueAvatar = document.getElementById("dialogueAvatar");
         var dialogueAvatarImg = document.getElementById("dialogueAvatarImg");
@@ -1473,6 +1478,15 @@
           TRAILS.forEach(function(t){ if (t.id === "watch") watchTrail = t; });
           collect(watchTrail);
         }
+        var turtleMet = false;
+        function talkTurtle(){
+          var first = !turtleMet;
+          turtleMet = true;
+          say(first
+            ? "Hi hi! You're just in time — the fountain was showing a ship on a silver sea. It does that. Shows far-off things, if you watch long enough."
+            : "Still watching. The hares hate that we can see them coming. That's the whole trick, really.",
+            "Turtle — one of the turtle folk who keep the Watch.", WHO_TURTLE);
+        }
         function talkWisp(color){
           var lines = {
             orange: "Hihi! I'm Ember! The chief's light keeps the ghosts polite. Stay as long as you like!",
@@ -1520,6 +1534,8 @@
         if (altarEl) altarEl.addEventListener("click", function(ev){ ev.stopPropagation(); visitAltar(); });
         var fountainEl = document.getElementById("fountainEl");
         if (fountainEl) fountainEl.addEventListener("click", function(ev){ ev.stopPropagation(); visitFountain(); });
+        var turtleEl = document.getElementById("turtleEl");
+        if (turtleEl) turtleEl.addEventListener("click", function(ev){ ev.stopPropagation(); talkTurtle(); });
         document.getElementById("libraryEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(DECKS_DOOR.x, DECKS_DOOR.y); });
         document.getElementById("templeEl").addEventListener("click", function(ev){ ev.stopPropagation(); visitTemple(); });
         document.getElementById("woodshopEl").addEventListener("click", function(ev){ ev.stopPropagation(); walkTo(SHOP_DOOR.x, SHOP_DOOR.y); });
@@ -1546,7 +1562,8 @@
           { id: "altar", x: ALTAR.x, y: ALTAR.y, range: 110, label: "Touch the stone altar", run: visitAltar }
         ];
         var WATCH_SITES = [
-          { id: "fountain", x: FOUNTAIN.x, y: FOUNTAIN.y, range: 130, label: "Touch the faerie fountain", run: visitFountain }
+          { id: "fountain", x: FOUNTAIN.x, y: FOUNTAIN.y, range: 130, label: "Touch the faerie fountain", run: visitFountain },
+          { id: "turtle", x: 716, y: 300, range: 112, label: "Talk to the turtle", run: talkTurtle }
         ];
         function nearestSite(){
           var sites = room === "shop" ? SITES : room === "decks" ? DECKS_SITES : room === "social" ? SOCIAL_SITES : room === "community" ? COMMUNITY_SITES : room === "watch" ? WATCH_SITES : null; // each screen has its own folk
@@ -1792,6 +1809,7 @@
           wispGreenEl.classList.toggle("near", !!(ns.site && ns.site.id === "wispG"));
           if (typeof lodgeEl !== "undefined" && lodgeEl) lodgeEl.classList.toggle("near", !!(ns.site && ns.site.id === "lodge"));
           if (typeof masonEl !== "undefined" && masonEl) masonEl.classList.toggle("near", !!(ns.site && ns.site.id === "mason"));
+          if (typeof turtleEl !== "undefined" && turtleEl) turtleEl.classList.toggle("near", !!(ns.site && ns.site.id === "turtle"));
           if (typeof altarEl !== "undefined" && altarEl) altarEl.classList.toggle("near", !!(ns.site && ns.site.id === "altar"));
           // (the shrine stays "described" until the spark is gathered or the grove resets — no walk-away disarm: temple clicks work from anywhere, like Linkwood's)
           var dt = treeDist();
